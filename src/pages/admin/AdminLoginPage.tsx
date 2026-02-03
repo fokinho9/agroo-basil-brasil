@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
     // Check if already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate('/admin/dashboard');
+        navigate('/fokinho/dashboard');
       }
     });
   }, [navigate]);
@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
       if (error) throw error;
 
       toast.success('Login realizado com sucesso!');
-      navigate('/admin/dashboard');
+      navigate('/fokinho/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Erro ao fazer login');
     } finally {

@@ -1,12 +1,17 @@
-import { Star } from 'lucide-react';
+import { useState } from 'react';
+import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useProductReviews } from '@/hooks/useReviews';
 
 interface ProductReviewsProps {
   productId: string;
 }
 
+const REVIEWS_PER_PAGE = 3;
+
 export function ProductReviews({ productId }: ProductReviewsProps) {
   const { data: reviews, isLoading } = useProductReviews(productId);
+  const [currentPage, setCurrentPage] = useState(1);
 
   if (isLoading) {
     return (
@@ -31,6 +36,13 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
   }
 
   const averageRating = reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length;
+  const totalPages = Math.ceil(reviews.length / REVIEWS_PER_PAGE);
+  const startIndex = (currentPage - 1) * REVIEWS_PER_PAGE;
+  const paginatedReviews = reviews.slice(startIndex, startIndex + REVIEWS_PER_PAGE);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
 
   return (
     <div className="space-y-6">
@@ -75,7 +87,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {reviews.map((review) => (
+        {paginatedReviews.map((review) => (
           <div key={review.id} className="p-4 border border-border rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -108,6 +120,45 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
           </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={currentPage === page ? 'default' : 'outline'}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

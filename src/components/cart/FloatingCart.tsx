@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,13 @@ import { formatCurrency } from '@/lib/utils';
 
 export function FloatingCart() {
   const { items, isOpen, setIsOpen, updateQuantity, removeFromCart, getTotal } = useCart();
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && items.length > 0) {
+      setIsAnimating(true);
+    }
+  }, [isOpen, items.length]);
 
   if (!isOpen || items.length === 0) return null;
 
@@ -13,12 +21,16 @@ export function FloatingCart() {
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-foreground/50 z-40"
+        className="fixed inset-0 bg-foreground/50 z-40 animate-fade-in"
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Cart Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-xl z-50 animate-slide-in-right flex flex-col">
+      {/* Cart Panel - animated from bottom left */}
+      <div 
+        className={`fixed left-4 bottom-4 md:left-auto md:right-0 md:top-0 md:bottom-0 w-[calc(100%-2rem)] md:w-full max-w-md bg-card border border-border md:border-l shadow-xl z-50 rounded-lg md:rounded-none flex flex-col max-h-[80vh] md:max-h-full md:h-full ${
+          isAnimating ? 'animate-scale-in md:animate-slide-in-right' : ''
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">

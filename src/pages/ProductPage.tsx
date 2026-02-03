@@ -237,14 +237,14 @@ export default function ProductPage() {
               <div className="flex items-center border border-border rounded-lg">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="p-3 hover:bg-muted transition-colors"
+                  className="p-2 hover:bg-muted transition-colors"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
-                <span className="w-12 text-center font-medium">{quantity}</span>
+                <span className="w-8 text-center font-medium text-sm">{quantity}</span>
                 <button
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="p-3 hover:bg-muted transition-colors"
+                  className="p-2 hover:bg-muted transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                 </button>

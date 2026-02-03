@@ -1,7 +1,15 @@
 import { HeroBanner } from '@/components/home/HeroBanner';
+import { PromoBar } from '@/components/home/PromoBar';
 import { FeaturedProducts } from '@/components/home/FeaturedProducts';
 import { CategorySection } from '@/components/home/CategorySection';
-import { Truck, Shield, Headphones, CreditCard } from 'lucide-react';
+import { PromotionSection } from '@/components/home/PromotionSection';
+import { LatestProducts } from '@/components/home/LatestProducts';
+import { FeaturedCategories } from '@/components/home/FeaturedCategories';
+import { CTABanner } from '@/components/home/CTABanner';
+import { TestimonialsSection } from '@/components/home/TestimonialsSection';
+import { BrandsSection } from '@/components/home/BrandsSection';
+import { ContactCTA } from '@/components/home/ContactCTA';
+import { Truck, Shield, Headphones, CreditCard, Leaf, Award, Package, Timer } from 'lucide-react';
 
 const benefits = [
   {
@@ -26,9 +34,36 @@ const benefits = [
   },
 ];
 
+const stats = [
+  {
+    icon: Package,
+    value: '500+',
+    label: 'Produtos Disponíveis',
+  },
+  {
+    icon: Award,
+    value: '10+',
+    label: 'Anos de Experiência',
+  },
+  {
+    icon: Leaf,
+    value: '100%',
+    label: 'Qualidade Garantida',
+  },
+  {
+    icon: Timer,
+    value: '24h',
+    label: 'Atendimento Rápido',
+  },
+];
+
 export default function HomePage() {
   return (
     <div>
+      {/* Promo Bar */}
+      <PromoBar />
+
+      {/* Hero Banner */}
       <HeroBanner />
       
       {/* Benefits Bar */}
@@ -50,8 +85,49 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Category Section */}
       <CategorySection />
+
+      {/* Featured Products */}
       <FeaturedProducts />
+
+      {/* Promotions with Discounts */}
+      <PromotionSection />
+
+      {/* Featured Categories with Images */}
+      <FeaturedCategories />
+
+      {/* Latest Products */}
+      <LatestProducts />
+
+      {/* CTA Banner */}
+      <CTABanner />
+
+      {/* Stats Section */}
+      <section className="py-12 md:py-16 bg-muted/50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                  <stat.icon className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-3xl md:text-4xl font-bold text-foreground mb-1">{stat.value}</p>
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <TestimonialsSection />
+
+      {/* Brands */}
+      <BrandsSection />
+
+      {/* Contact CTA */}
+      <ContactCTA />
     </div>
   );
 }

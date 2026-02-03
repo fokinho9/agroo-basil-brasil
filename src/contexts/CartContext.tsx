@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { CartItem, Product } from '@/types';
 
 interface CartContextType {
@@ -11,6 +11,11 @@ interface CartContextType {
   getItemCount: () => number;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  shouldAnimate: boolean;
+  setShouldAnimate: (animate: boolean) => void;
+  lastAddedProduct: Product | null;
+  showNotification: boolean;
+  setShowNotification: (show: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -20,6 +25,9 @@ const CART_STORAGE_KEY = 'agroshop_cart';
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+  const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
+  const [showNotification, setShowNotification] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -38,7 +46,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = useCallback((product: Product, quantity = 1) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.product.id === product.id);
       
@@ -52,9 +60,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       
       return [...currentItems, { product, quantity }];
     });
-    // Trigger cart open with animation
-    setIsOpen(true);
-  };
+    
+    // Trigger notification and animation instead of opening cart
+    setLastAddedProduct(product);
+    setShowNotification(true);
+    setShouldAnimate(true);
+  }, []);
 
   const removeFromCart = (productId: string) => {
     setItems((currentItems) => currentItems.filter((item) => item.product.id !== productId));
@@ -78,13 +89,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsOpen(false);
   };
 
-  const getTotal = () => {
+  const getTotal = useCallback(() => {
     return items.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  };
+  }, [items]);
 
-  const getItemCount = () => {
+  const getItemCount = useCallback(() => {
     return items.reduce((count, item) => count + item.quantity, 0);
-  };
+  }, [items]);
 
   return (
     <CartContext.Provider
@@ -98,6 +109,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         getItemCount,
         isOpen,
         setIsOpen,
+        shouldAnimate,
+        setShouldAnimate,
+        lastAddedProduct,
+        showNotification,
+        setShowNotification,
       }}
     >
       {children}

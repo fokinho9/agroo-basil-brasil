@@ -51,19 +51,20 @@ function parseCSV(csvText: string): ProductRow[] {
     const name = values[3]?.replace(/"/g, '') || '';
     const brand = values[4]?.replace(/"/g, '') || '';
     
-    // Parse price from column 5 (current price) - skip if "Preço sob consulta"
+    // Parse price from column 5 (current price)
     const priceStr = values[5]?.replace(/"/g, '') || '';
-    if (priceStr.includes('consulta') || !priceStr.includes('R$')) {
-      continue; // Skip products without price
-    }
+    let currentPrice = 0;
     
-    const currentPrice = parseFloat(priceStr.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+    // Handle "Preço sob consulta" - set price as 0 (to be updated later)
+    if (!priceStr.includes('consulta') && priceStr.includes('R$')) {
+      currentPrice = parseFloat(priceStr.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+    }
     
     // Parse original price from column 10 (if available)
     const originalPriceStr = values[10]?.replace(/"/g, '').replace(/[R$\s.]/g, '').replace(',', '.') || '0';
     const originalPrice = parseFloat(originalPriceStr) || 0;
 
-    if (name && currentPrice > 0) {
+    if (name) {
       products.push({
         name: name.length > 100 ? name.substring(0, 97) + '...' : name,
         image_url: imageUrl,

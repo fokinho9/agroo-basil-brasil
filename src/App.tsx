@@ -24,6 +24,7 @@ import AdminCategoriesPage from "@/pages/admin/AdminCategoriesPage";
 import AdminOrdersPage from "@/pages/admin/AdminOrdersPage";
 import AdminBannersPage from "@/pages/admin/AdminBannersPage";
 import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
+import AdminImportPage from "@/pages/admin/AdminImportPage";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/admin/pedidos" element={<AdminOrdersPage />} />
             <Route path="/admin/banners" element={<AdminBannersPage />} />
             <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
+            <Route path="/admin/importar" element={<AdminImportPage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

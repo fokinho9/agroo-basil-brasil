@@ -13,6 +13,17 @@ import { ProductReviews } from '@/components/products/ProductReviews';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
+// Helper to convert **text** to bold
+function formatDescription(text: string): JSX.Element[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id!);
@@ -218,13 +229,6 @@ export default function ProductPage() {
             )}
           </div>
 
-          {product.description && (
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">Descrição</h3>
-              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
-            </div>
-          )}
-
           {/* Stock Status - Always show as available */}
           <div className="flex items-center gap-2">
             <Check className="h-5 w-5 text-success" />
@@ -285,6 +289,21 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
+
+      {/* Description Section - Above Reviews */}
+      {product.description && (
+        <>
+          <Separator className="my-12" />
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-6">
+              Descrição do Produto
+            </h2>
+            <div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
+              {formatDescription(product.description)}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Reviews Section */}
       <Separator className="my-12" />

@@ -14,18 +14,17 @@ import { generateFakeReviews } from '@/hooks/useReviews';
 import { firecrawlApi } from '@/lib/api/firecrawl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2 } from 'lucide-react';
+import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2 } from 'lucide-react';
 
 // Function to clean and extract only the product description
 function cleanProductDescription(rawMarkdown: string): string {
-  // Common patterns to remove (navigation, prices, cart buttons, etc.)
   const patternsToRemove = [
     /^-\s*PROTEC HORSE.*$/gim,
     /^-\s*P\/\s*\w+.*$/gim,
-    /!\[.*?\].*$/gm, // Remove image references
-    /^\s*-\s*!\[.*$/gm, // Remove list items with images
-    /R\$\s*[\d.,]+/g, // Remove prices
-    /\d+x\s*de\s*R\$.*$/gim, // Remove installment info
+    /!\[.*?\].*$/gm,
+    /^\s*-\s*!\[.*$/gm,
+    /R\$\s*[\d.,]+/g,
+    /\d+x\s*de\s*R\$.*$/gim,
     /FRETE\s*GR[ÁA]TIS/gi,
     /ADICIONAR\s*AO\s*CARRINHO/gi,
     /Calcular\s*Prazos.*$/gim,
@@ -35,8 +34,8 @@ function cleanProductDescription(rawMarkdown: string): string {
     /Cart[ãa]o\s*De\s*Cr[ée]dito.*$/gim,
     /Boleto\s*Banc[áa]rio.*$/gim,
     /Pix\s*Condi[çc][õo]es.*$/gim,
-    /^\s*\|.*\|.*$/gm, // Remove table rows
-    /^\s*-\s*\(.*USA\).*$/gm, // Remove size options
+    /^\s*\|.*\|.*$/gm,
+    /^\s*-\s*\(.*USA\).*$/gm,
     /ESCOLHA\s*A\s*COR.*$/gim,
     /Tamanho\s*de\s*Cal[çc]a.*$/gim,
     /N[ãa]o\s*sei\s*meu\s*CEP/gi,
@@ -46,26 +45,20 @@ function cleanProductDescription(rawMarkdown: string): string {
     /sem\s*juros/gi,
     /à\s*vista\s*no\s*Pix/gi,
     /Em\s*compras\s*[àa]\s*partir.*$/gim,
-    /\\\*/g, // Remove escaped asterisks
-    /^\s*-\s*$/gm, // Remove empty list items
-    /^\s*-\s*\s*$/gm, // Remove empty list items
+    /\\\*/g,
+    /^\s*-\s*$/gm,
+    /^\s*-\s*\s*$/gm,
   ];
 
   let cleaned = rawMarkdown;
 
-  // Apply all removal patterns
   for (const pattern of patternsToRemove) {
     cleaned = cleaned.replace(pattern, '');
   }
 
-  // Remove markdown headers but keep the content
   cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
-  
-  // Convert links to plain text
   cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 
-  // Try to find the actual product description section
-  // Look for common description indicators
   const descriptionMarkers = [
     /DETALHES\s*DO\s*PRODUTO[:\s]*/gi,
     /DESCRI[ÇC][ÃA]O[:\s]*/gi,
@@ -78,38 +71,31 @@ function cleanProductDescription(rawMarkdown: string): string {
     if (match) {
       const index = cleaned.indexOf(match[0]);
       if (index !== -1) {
-        // Get content after the marker
         let descriptionPart = cleaned.substring(index + match[0].length);
-        
-        // Try to find where the description ends (next section or too many empty lines)
         const nextSectionMatch = descriptionPart.match(/\n\n(?:AVALIA[ÇC][ÕO]ES|COMENT[ÁA]RIOS|PRODUTOS\s*RELACIONADOS|ESPECIFICA[ÇC][ÕO]ES)/i);
         if (nextSectionMatch) {
           descriptionPart = descriptionPart.substring(0, nextSectionMatch.index);
         }
-        
         cleaned = descriptionPart;
         break;
       }
     }
   }
 
-  // Clean up extra whitespace and empty lines
   cleaned = cleaned
     .split('\n')
     .map(line => line.trim())
-    .filter(line => line.length > 2) // Remove very short lines
-    .filter(line => !line.match(/^\s*-\s*$/)) // Remove empty list markers
-    .filter(line => !line.match(/^\*+$/)) // Remove lines that are just asterisks
+    .filter(line => line.length > 2)
+    .filter(line => !line.match(/^\s*-\s*$/))
+    .filter(line => !line.match(/^\*+$/))
     .join('\n')
-    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
-  // If the result is too short, it probably failed to extract properly
   if (cleaned.length < 20) {
     return '';
   }
 
-  // Limit to 2000 chars for a clean description
   return cleaned.substring(0, 2000);
 }
 
@@ -199,6 +185,12 @@ export default function AdminImportPage() {
   const [bulkUrls, setBulkUrls] = useState<{ productId: string; url: string }[]>([]);
   const [isBulkScraping, setIsBulkScraping] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
+
+  // Auto bulk import by URL
+  const [autoBulkUrl, setAutoBulkUrl] = useState('');
+  const [isAutoBulkScraping, setIsAutoBulkScraping] = useState(false);
+  const [autoBulkProgress, setAutoBulkProgress] = useState(0);
+  const [autoBulkResults, setAutoBulkResults] = useState<{ matched: number; updated: number }>({ matched: 0, updated: 0 });
 
   // Review generation state
   const [isGeneratingReviews, setIsGeneratingReviews] = useState(false);
@@ -316,7 +308,6 @@ export default function AdminImportPage() {
         throw new Error('Nenhuma descrição encontrada na página');
       }
 
-      // Use the improved cleaning function
       const cleanedDescription = cleanProductDescription(description);
 
       if (!cleanedDescription) {
@@ -366,7 +357,6 @@ export default function AdminImportPage() {
       return;
     }
 
-    // Check if product already in list
     if (bulkUrls.find(item => item.productId === singleProductId)) {
       toast.error('Este produto já está na lista');
       return;
@@ -425,7 +415,6 @@ export default function AdminImportPage() {
       processed++;
       setBulkProgress(Math.round((processed / bulkUrls.length) * 100));
       
-      // Delay between requests
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
@@ -433,6 +422,140 @@ export default function AdminImportPage() {
     setBulkUrls([]);
     setIsBulkScraping(false);
     refetchProducts();
+  };
+
+  // Auto bulk import - scrape site and match products
+  const handleAutoBulkImport = async () => {
+    if (!autoBulkUrl.trim()) {
+      toast.error('Digite a URL do site');
+      return;
+    }
+
+    if (!products || products.length === 0) {
+      toast.error('Nenhum produto cadastrado para importar descrições');
+      return;
+    }
+
+    setIsAutoBulkScraping(true);
+    setAutoBulkProgress(0);
+    setAutoBulkResults({ matched: 0, updated: 0 });
+
+    try {
+      // First, map the site to find all product URLs
+      toast.info('Mapeando o site para encontrar produtos...');
+      
+      const mapResponse = await firecrawlApi.map ? 
+        await firecrawlApi.map(autoBulkUrl, { limit: 500 }) :
+        { success: false, error: 'Map not available' };
+      
+      let productUrls: string[] = [];
+      
+      if (mapResponse.success && mapResponse.links) {
+        // Filter URLs that look like product pages
+        productUrls = mapResponse.links.filter((url: string) => 
+          url.includes('/produto') || 
+          url.includes('/product') || 
+          url.includes('/p/') ||
+          url.match(/\/[\w-]+-\d+$/) // URL ending with slug-id pattern
+        );
+      }
+
+      if (productUrls.length === 0) {
+        // Fallback: try to scrape the main page for product links
+        const scrapeResponse = await firecrawlApi.scrape(autoBulkUrl, {
+          formats: ['links' as any],
+        });
+        
+        if (scrapeResponse.success && scrapeResponse.data?.links) {
+          productUrls = scrapeResponse.data.links.filter((url: string) =>
+            url.includes('/produto') || 
+            url.includes('/product') || 
+            url.includes('/p/')
+          );
+        }
+      }
+
+      if (productUrls.length === 0) {
+        toast.error('Nenhuma página de produto encontrada no site');
+        setIsAutoBulkScraping(false);
+        return;
+      }
+
+      toast.success(`${productUrls.length} páginas de produtos encontradas. Importando descrições...`);
+
+      let matched = 0;
+      let updated = 0;
+
+      // Process each product URL
+      for (let i = 0; i < Math.min(productUrls.length, 100); i++) {
+        const productUrl = productUrls[i];
+        
+        try {
+          const response = await firecrawlApi.scrape(productUrl, {
+            formats: ['markdown'],
+            onlyMainContent: true,
+          });
+
+          if (response.success) {
+            const markdown = response.data?.markdown || response.data?.data?.markdown || '';
+            
+            // Try to extract product name from the page
+            const titleMatch = markdown.match(/^#?\s*(.+?)(?:\n|$)/m);
+            const scrapedTitle = titleMatch ? titleMatch[1].trim() : '';
+            
+            if (scrapedTitle) {
+              // Find matching product by name similarity
+              const matchingProduct = products.find(p => {
+                const pName = p.name.toLowerCase().trim();
+                const sName = scrapedTitle.toLowerCase().trim();
+                
+                // Exact match or contains
+                return pName === sName || 
+                       pName.includes(sName) || 
+                       sName.includes(pName) ||
+                       // Fuzzy match: at least 80% of words match
+                       (() => {
+                         const pWords = pName.split(/\s+/);
+                         const sWords = sName.split(/\s+/);
+                         const matchCount = pWords.filter(w => sWords.some(sw => sw.includes(w) || w.includes(sw))).length;
+                         return matchCount >= Math.min(pWords.length, sWords.length) * 0.6;
+                       })();
+              });
+
+              if (matchingProduct) {
+                matched++;
+                
+                const cleanedDescription = cleanProductDescription(markdown);
+                
+                if (cleanedDescription && cleanedDescription.length > 20) {
+                  await updateProduct.mutateAsync({
+                    id: matchingProduct.id,
+                    description: cleanedDescription,
+                  });
+                  updated++;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error processing URL:', productUrl, error);
+        }
+
+        setAutoBulkProgress(Math.round(((i + 1) / Math.min(productUrls.length, 100)) * 100));
+        setAutoBulkResults({ matched, updated });
+        
+        // Delay between requests
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      toast.success(`Importação automática concluída! ${updated} descrições atualizadas de ${matched} produtos encontrados.`);
+      refetchProducts();
+    } catch (error: any) {
+      console.error('Auto bulk import error:', error);
+      toast.error(error.message || 'Erro na importação automática');
+    } finally {
+      setIsAutoBulkScraping(false);
+    }
   };
 
   const handleGenerateReviews = async () => {
@@ -618,6 +741,61 @@ export default function AdminImportPage() {
 
           {/* Description Import Tab */}
           <TabsContent value="description" className="space-y-6">
+            {/* Auto Bulk Import by URL */}
+            <Card className="border-primary/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5 text-primary" />
+                  Importação Automática por URL
+                </CardTitle>
+                <CardDescription>
+                  Cole a URL do site e o sistema irá buscar automaticamente as descrições de todos os produtos encontrados
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isAutoBulkScraping ? (
+                  <div className="space-y-4">
+                    <Progress value={autoBulkProgress} />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progresso: {autoBulkProgress}%</span>
+                      <div className="flex gap-4">
+                        <span className="text-muted-foreground">
+                          {autoBulkResults.matched} produtos encontrados
+                        </span>
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Check className="h-4 w-4" /> {autoBulkResults.updated} atualizados
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>URL do Site</Label>
+                      <Input 
+                        placeholder="https://loja.com.br" 
+                        value={autoBulkUrl}
+                        onChange={(e) => setAutoBulkUrl(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        O sistema irá mapear o site, encontrar páginas de produtos e importar as descrições automaticamente
+                      </p>
+                    </div>
+
+                    <Button 
+                      onClick={handleAutoBulkImport}
+                      disabled={!autoBulkUrl.trim()}
+                      size="lg"
+                      className="w-full"
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Importar Descrições Automaticamente
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Single Product Import */}
             <Card>
               <CardHeader>

@@ -14,7 +14,7 @@ import { generateFakeReviews } from '@/hooks/useReviews';
 import { firecrawlApi } from '@/lib/api/firecrawl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2 } from 'lucide-react';
+import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2, FileText, FileX } from 'lucide-react';
 
 // Function to clean and extract only the product description
 function cleanProductDescription(rawMarkdown: string): string {
@@ -195,6 +195,19 @@ export default function AdminImportPage() {
   // Review generation state
   const [isGeneratingReviews, setIsGeneratingReviews] = useState(false);
   const [reviewProgress, setReviewProgress] = useState(0);
+
+  // Product description filter
+  const [descriptionFilter, setDescriptionFilter] = useState<'all' | 'with' | 'without'>('all');
+
+  // Computed product lists
+  const productsWithDescription = products?.filter(p => p.description && p.description.trim().length > 20) || [];
+  const productsWithoutDescription = products?.filter(p => !p.description || p.description.trim().length <= 20) || [];
+  
+  const filteredProducts = descriptionFilter === 'with' 
+    ? productsWithDescription 
+    : descriptionFilter === 'without' 
+      ? productsWithoutDescription 
+      : products || [];
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -602,6 +615,127 @@ export default function AdminImportPage() {
           <h1 className="text-3xl font-bold text-foreground">Importar</h1>
           <p className="text-muted-foreground">Importe produtos, descrições e gere avaliações</p>
         </div>
+
+        {/* Product Description Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card 
+            className={`cursor-pointer transition-all ${descriptionFilter === 'all' ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
+            onClick={() => setDescriptionFilter('all')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total de Produtos</p>
+                  <p className="text-2xl font-bold">{products?.length || 0}</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <FileUp className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className={`cursor-pointer transition-all ${descriptionFilter === 'with' ? 'ring-2 ring-green-500' : 'hover:bg-muted/50'}`}
+            onClick={() => setDescriptionFilter('with')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Com Descrição</p>
+                  <p className="text-2xl font-bold text-green-600">{productsWithDescription.length}</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className={`cursor-pointer transition-all ${descriptionFilter === 'without' ? 'ring-2 ring-orange-500' : 'hover:bg-muted/50'}`}
+            onClick={() => setDescriptionFilter('without')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Sem Descrição</p>
+                  <p className="text-2xl font-bold text-orange-600">{productsWithoutDescription.length}</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                  <FileX className="h-5 w-5 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filtered Product List */}
+        {descriptionFilter !== 'all' && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">
+                {descriptionFilter === 'with' ? 'Produtos com Descrição' : 'Produtos sem Descrição'}
+              </CardTitle>
+              <CardDescription>
+                {filteredProducts.length} produtos encontrados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg max-h-64 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left p-3">Produto</th>
+                      <th className="text-left p-3">Descrição</th>
+                      <th className="text-right p-3">Preço</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.slice(0, 50).map((product) => (
+                      <tr key={product.id} className="border-t hover:bg-muted/50">
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            {product.image_url && (
+                              <img 
+                                src={product.image_url} 
+                                alt="" 
+                                className="w-10 h-10 rounded object-cover"
+                              />
+                            )}
+                            <span className="truncate max-w-xs">{product.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            product.description && product.description.length > 20
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {product.description && product.description.length > 20
+                              ? `${product.description.substring(0, 50)}...`
+                              : 'Sem descrição'
+                            }
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-medium">
+                          R$ {product.price.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredProducts.length > 50 && (
+                      <tr className="border-t">
+                        <td colSpan={3} className="p-3 text-center text-muted-foreground">
+                          ... e mais {filteredProducts.length - 50} produtos
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="description" className="w-full">
           <TabsList className="grid w-full grid-cols-3">

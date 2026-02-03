@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Tags,
+  FileUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ const menuItems = [
   { icon: Tags, label: 'Categorias', path: '/admin/categorias' },
   { icon: ShoppingCart, label: 'Pedidos', path: '/admin/pedidos' },
   { icon: Image, label: 'Banners', path: '/admin/banners' },
+  { icon: FileUp, label: 'Importar', path: '/admin/importar' },
   { icon: Settings, label: 'Configurações', path: '/admin/configuracoes' },
 ];
 

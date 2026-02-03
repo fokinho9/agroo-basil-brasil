@@ -1,25 +1,64 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import { CartProvider } from "@/contexts/CartContext";
+import { Layout } from "@/components/layout/Layout";
+
+import HomePage from "@/pages/HomePage";
+import ProductsPage from "@/pages/ProductsPage";
+import ProductPage from "@/pages/ProductPage";
+import CheckoutPage from "@/pages/CheckoutPage";
+import AboutPage from "@/pages/AboutPage";
+import ContactPage from "@/pages/ContactPage";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import ReturnsPage from "@/pages/ReturnsPage";
+import FAQPage from "@/pages/FAQPage";
+import NotFound from "@/pages/NotFound";
+
+import AdminLoginPage from "@/pages/admin/AdminLoginPage";
+import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import AdminProductsPage from "@/pages/admin/AdminProductsPage";
+import AdminCategoriesPage from "@/pages/admin/AdminCategoriesPage";
+import AdminOrdersPage from "@/pages/admin/AdminOrdersPage";
+import AdminBannersPage from "@/pages/admin/AdminBannersPage";
+import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <CartProvider>
+        <Toaster />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout><HomePage /></Layout>} />
+            <Route path="/produtos" element={<Layout><ProductsPage /></Layout>} />
+            <Route path="/categoria/:slug" element={<Layout><ProductsPage /></Layout>} />
+            <Route path="/busca" element={<Layout><ProductsPage /></Layout>} />
+            <Route path="/produto/:id" element={<Layout><ProductPage /></Layout>} />
+            <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+            <Route path="/sobre" element={<Layout><AboutPage /></Layout>} />
+            <Route path="/contato" element={<Layout><ContactPage /></Layout>} />
+            <Route path="/termos" element={<Layout><TermsPage /></Layout>} />
+            <Route path="/privacidade" element={<Layout><PrivacyPage /></Layout>} />
+            <Route path="/trocas" element={<Layout><ReturnsPage /></Layout>} />
+            <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
+            
+            <Route path="/admin" element={<AdminLoginPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/produtos" element={<AdminProductsPage />} />
+            <Route path="/admin/categorias" element={<AdminCategoriesPage />} />
+            <Route path="/admin/pedidos" element={<AdminOrdersPage />} />
+            <Route path="/admin/banners" element={<AdminBannersPage />} />
+            <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

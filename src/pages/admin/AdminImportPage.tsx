@@ -45,23 +45,30 @@ function parseCSV(csvText: string): ProductRow[] {
     }
     values.push(current.trim());
 
-    // Extract data from columns:
-    // 1: image_url, 3: product-title, 4: brand, 5: original price, 6: discount price
+    // CSV columns:
+    // 1: image_url, 3: product-title, 4: brand, 5: product-price (current), 10: original price
     const imageUrl = values[1]?.replace(/"/g, '') || '';
     const name = values[3]?.replace(/"/g, '') || '';
     const brand = values[4]?.replace(/"/g, '') || '';
-    const originalPriceStr = values[5]?.replace(/[R$\s.]/g, '').replace(',', '.') || '0';
-    const discountPriceStr = values[6]?.replace(/[R$\s.]/g, '').replace(',', '.') || '0';
-
+    
+    // Parse price from column 5 (current price) - skip if "Preço sob consulta"
+    const priceStr = values[5]?.replace(/"/g, '') || '';
+    if (priceStr.includes('consulta') || !priceStr.includes('R$')) {
+      continue; // Skip products without price
+    }
+    
+    const currentPrice = parseFloat(priceStr.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+    
+    // Parse original price from column 10 (if available)
+    const originalPriceStr = values[10]?.replace(/"/g, '').replace(/[R$\s.]/g, '').replace(',', '.') || '0';
     const originalPrice = parseFloat(originalPriceStr) || 0;
-    const discountPrice = parseFloat(discountPriceStr) || 0;
 
-    if (name && discountPrice > 0) {
+    if (name && currentPrice > 0) {
       products.push({
         name: name.length > 100 ? name.substring(0, 97) + '...' : name,
         image_url: imageUrl,
-        original_price: originalPrice,
-        price: discountPrice,
+        original_price: originalPrice > currentPrice ? originalPrice : 0,
+        price: currentPrice,
         brand,
       });
     }

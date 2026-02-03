@@ -52,6 +52,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       
       return [...currentItems, { product, quantity }];
     });
+    // Trigger cart open with animation
     setIsOpen(true);
   };
 

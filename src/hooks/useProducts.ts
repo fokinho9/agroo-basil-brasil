@@ -79,6 +79,48 @@ export function useFeaturedProducts() {
   });
 }
 
+export function useLatestProducts(limit: number = 12) {
+  return useQuery({
+    queryKey: ['products', 'latest', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*)
+        `)
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data as Product[];
+    },
+  });
+}
+
+export function useDiscountedProducts(limit: number = 8) {
+  return useQuery({
+    queryKey: ['products', 'discounted', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*)
+        `)
+        .eq('active', true)
+        .not('original_price', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      // Filter to only products where original_price > price
+      return (data as Product[]).filter(p => p.original_price && p.original_price > p.price);
+    },
+  });
+}
+
 export function useSearchProducts(searchTerm: string) {
   return useQuery({
     queryKey: ['products', 'search', searchTerm],

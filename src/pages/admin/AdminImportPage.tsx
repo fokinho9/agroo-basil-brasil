@@ -6,14 +6,14 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCreateProduct, useAdminProducts, useUpdateProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
-import { useCreateReview, generateFakeReviews } from '@/hooks/useReviews';
+import { generateFakeReviews } from '@/hooks/useReviews';
+import { firecrawlApi } from '@/lib/api/firecrawl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles } from 'lucide-react';
+import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2 } from 'lucide-react';
 
 interface ProductRow {
   name: string;
@@ -27,12 +27,10 @@ function parseCSV(csvText: string): ProductRow[] {
   const lines = csvText.split('\n');
   const products: ProductRow[] = [];
 
-  // Skip header (line 0)
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
 
-    // Parse CSV with quoted values
     const values: string[] = [];
     let current = '';
     let inQuotes = false;
@@ -50,22 +48,17 @@ function parseCSV(csvText: string): ProductRow[] {
     }
     values.push(current.trim());
 
-    // CSV columns:
-    // 1: image_url, 3: product-title, 4: brand, 5: product-price (current), 10: original price
     const imageUrl = values[1]?.replace(/"/g, '') || '';
     const name = values[3]?.replace(/"/g, '') || '';
     const brand = values[4]?.replace(/"/g, '') || '';
     
-    // Parse price from column 5 (current price)
     const priceStr = values[5]?.replace(/"/g, '') || '';
     let currentPrice = 0;
     
-    // Handle "Preço sob consulta" - set price as 0 (to be updated later)
     if (!priceStr.includes('consulta') && priceStr.includes('R$')) {
       currentPrice = parseFloat(priceStr.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
     }
     
-    // Parse original price from column 10 (if available)
     const originalPriceStr = values[10]?.replace(/"/g, '').replace(/[R$\s.]/g, '').replace(',', '.') || '0';
     const originalPrice = parseFloat(originalPriceStr) || 0;
 
@@ -85,10 +78,9 @@ function parseCSV(csvText: string): ProductRow[] {
 
 export default function AdminImportPage() {
   const { data: categories } = useCategories();
-  const { data: products } = useAdminProducts();
+  const { data: products, refetch: refetchProducts } = useAdminProducts();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
-  const createReview = useCreateReview();
   
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -98,11 +90,15 @@ export default function AdminImportPage() {
   const [parsedProducts, setParsedProducts] = useState<ProductRow[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Description import state
-  const [descriptionUrl, setDescriptionUrl] = useState('');
-  const [descriptionText, setDescriptionText] = useState('');
-  const [selectedProductId, setSelectedProductId] = useState('');
-  const [isImportingDescription, setIsImportingDescription] = useState(false);
+  // Single product description import
+  const [singleProductId, setSingleProductId] = useState('');
+  const [singleProductUrl, setSingleProductUrl] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
+
+  // Bulk description import
+  const [bulkUrls, setBulkUrls] = useState<{ productId: string; url: string }[]>([]);
+  const [isBulkScraping, setIsBulkScraping] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
 
   // Review generation state
   const [isGeneratingReviews, setIsGeneratingReviews] = useState(false);
@@ -119,7 +115,6 @@ export default function AdminImportPage() {
 
     setSelectedFile(file);
     
-    // Parse the file to preview
     const text = await file.text();
     const products = parseCSV(text);
     setParsedProducts(products);
@@ -181,7 +176,6 @@ export default function AdminImportPage() {
       setProgress(Math.round(((i + 1) / parsedProducts.length) * 100));
       setResults({ success, errors });
 
-      // Small delay to avoid overwhelming the database
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
@@ -190,32 +184,137 @@ export default function AdminImportPage() {
     handleClearFile();
   };
 
-  const handleImportDescription = async () => {
-    if (!selectedProductId) {
+  // Scrape description from single URL
+  const handleScrapeSingleDescription = async () => {
+    if (!singleProductId) {
       toast.error('Selecione um produto');
       return;
     }
 
-    if (!descriptionText.trim()) {
-      toast.error('Digite ou cole uma descrição');
+    if (!singleProductUrl.trim()) {
+      toast.error('Digite a URL do produto');
       return;
     }
 
-    setIsImportingDescription(true);
+    setIsScraping(true);
 
     try {
-      await updateProduct.mutateAsync({
-        id: selectedProductId,
-        description: descriptionText.trim(),
+      const response = await firecrawlApi.scrape(singleProductUrl, {
+        formats: ['markdown'],
+        onlyMainContent: true,
       });
-      toast.success('Descrição atualizada com sucesso!');
-      setDescriptionText('');
-      setSelectedProductId('');
-    } catch (error) {
-      toast.error('Erro ao atualizar descrição');
+
+      if (!response.success) {
+        throw new Error(response.error || 'Falha ao extrair descrição');
+      }
+
+      const description = response.data?.markdown || response.data?.data?.markdown || '';
+      
+      if (!description) {
+        throw new Error('Nenhuma descrição encontrada na página');
+      }
+
+      // Clean up markdown - remove excessive headers and keep content
+      const cleanedDescription = description
+        .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to plain text
+        .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+        .trim()
+        .substring(0, 5000); // Limit to 5000 chars
+
+      await updateProduct.mutateAsync({
+        id: singleProductId,
+        description: cleanedDescription,
+      });
+
+      toast.success('Descrição importada e atualizada com sucesso!');
+      setSingleProductUrl('');
+      setSingleProductId('');
+    } catch (error: any) {
+      console.error('Error scraping:', error);
+      toast.error(error.message || 'Erro ao importar descrição');
     } finally {
-      setIsImportingDescription(false);
+      setIsScraping(false);
     }
+  };
+
+  // Add product to bulk import list
+  const handleAddToBulk = () => {
+    if (!singleProductId || !singleProductUrl.trim()) {
+      toast.error('Selecione um produto e digite a URL');
+      return;
+    }
+
+    // Check if product already in list
+    if (bulkUrls.find(item => item.productId === singleProductId)) {
+      toast.error('Este produto já está na lista');
+      return;
+    }
+
+    setBulkUrls(prev => [...prev, { productId: singleProductId, url: singleProductUrl }]);
+    setSingleProductUrl('');
+    setSingleProductId('');
+    toast.success('Produto adicionado à lista de importação em massa');
+  };
+
+  // Remove from bulk list
+  const handleRemoveFromBulk = (productId: string) => {
+    setBulkUrls(prev => prev.filter(item => item.productId !== productId));
+  };
+
+  // Process bulk import
+  const handleBulkScrape = async () => {
+    if (bulkUrls.length === 0) {
+      toast.error('Adicione produtos à lista primeiro');
+      return;
+    }
+
+    setIsBulkScraping(true);
+    setBulkProgress(0);
+
+    let processed = 0;
+    let success = 0;
+
+    for (const item of bulkUrls) {
+      try {
+        const response = await firecrawlApi.scrape(item.url, {
+          formats: ['markdown'],
+          onlyMainContent: true,
+        });
+
+        if (response.success) {
+          const description = response.data?.markdown || response.data?.data?.markdown || '';
+          
+          if (description) {
+            const cleanedDescription = description
+              .replace(/^#{1,6}\s+/gm, '')
+              .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+              .replace(/!\[.*?\]\(.*?\)/g, '')
+              .trim()
+              .substring(0, 5000);
+
+            await updateProduct.mutateAsync({
+              id: item.productId,
+              description: cleanedDescription,
+            });
+            success++;
+          }
+        }
+      } catch (error) {
+        console.error('Error scraping:', error);
+      }
+
+      processed++;
+      setBulkProgress(Math.round((processed / bulkUrls.length) * 100));
+      
+      // Delay between requests
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    toast.success(`Importação em massa concluída! ${success}/${bulkUrls.length} descrições importadas.`);
+    setBulkUrls([]);
+    setIsBulkScraping(false);
+    refetchProducts();
   };
 
   const handleGenerateReviews = async () => {
@@ -230,7 +329,6 @@ export default function AdminImportPage() {
     let processed = 0;
 
     for (const product of products) {
-      // Generate between 2 and 30 reviews per product
       const reviewCount = Math.floor(Math.random() * 29) + 2;
       const reviews = generateFakeReviews(product.id, reviewCount);
 
@@ -245,12 +343,15 @@ export default function AdminImportPage() {
       processed++;
       setReviewProgress(Math.round((processed / products.length) * 100));
       
-      // Small delay
       await new Promise(resolve => setTimeout(resolve, 50));
     }
 
     toast.success(`Avaliações geradas para ${processed} produtos!`);
     setIsGeneratingReviews(false);
+  };
+
+  const getProductNameById = (id: string) => {
+    return products?.find(p => p.id === id)?.name || 'Produto não encontrado';
   };
 
   return (
@@ -261,7 +362,7 @@ export default function AdminImportPage() {
           <p className="text-muted-foreground">Importe produtos, descrições e gere avaliações</p>
         </div>
 
-        <Tabs defaultValue="csv" className="w-full">
+        <Tabs defaultValue="description" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="csv">Importar CSV</TabsTrigger>
             <TabsTrigger value="description">Importar Descrição</TabsTrigger>
@@ -272,7 +373,7 @@ export default function AdminImportPage() {
           <TabsContent value="csv">
             <Card>
               <CardHeader>
-                <CardTitle>Importação em Massa</CardTitle>
+                <CardTitle>Importação em Massa de Produtos</CardTitle>
                 <CardDescription>
                   Faça upload de um arquivo CSV com os produtos para importar
                 </CardDescription>
@@ -297,7 +398,6 @@ export default function AdminImportPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* File Upload Area */}
                     <div className="space-y-2">
                       <Label>Arquivo CSV</Label>
                       {selectedFile ? (
@@ -334,7 +434,6 @@ export default function AdminImportPage() {
                       )}
                     </div>
 
-                    {/* Category Selection */}
                     <div className="space-y-2">
                       <Label>Categoria de Destino</Label>
                       <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
@@ -351,7 +450,6 @@ export default function AdminImportPage() {
                       </Select>
                     </div>
 
-                    {/* Preview */}
                     {parsedProducts.length > 0 && (
                       <div className="space-y-2">
                         <Label>Prévia dos Produtos</Label>
@@ -385,7 +483,6 @@ export default function AdminImportPage() {
                       </div>
                     )}
 
-                    {/* Import Button */}
                     <Button 
                       onClick={handleImport} 
                       disabled={!selectedFile || !selectedCategoryId || parsedProducts.length === 0}
@@ -402,68 +499,155 @@ export default function AdminImportPage() {
           </TabsContent>
 
           {/* Description Import Tab */}
-          <TabsContent value="description">
+          <TabsContent value="description" className="space-y-6">
+            {/* Single Product Import */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="h-5 w-5" />
-                  Importar Descrição
+                  Importar Descrição de URL
                 </CardTitle>
                 <CardDescription>
-                  Copie a descrição de um site e cole abaixo para atualizar um produto
+                  Selecione um produto e cole a URL para extrair a descrição automaticamente
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Selecione o Produto</Label>
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um produto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products?.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Selecione o Produto</Label>
+                    <Select value={singleProductId} onValueChange={setSingleProductId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um produto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products?.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>URL do Produto</Label>
+                    <Input 
+                      placeholder="https://loja.com/produto" 
+                      value={singleProductUrl}
+                      onChange={(e) => setSingleProductUrl(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>URL de Referência (opcional)</Label>
-                  <Input 
-                    placeholder="https://exemplo.com/produto" 
-                    value={descriptionUrl}
-                    onChange={(e) => setDescriptionUrl(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Anote a URL de onde você copiou a descrição para referência
-                  </p>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleScrapeSingleDescription}
+                    disabled={!singleProductId || !singleProductUrl.trim() || isScraping}
+                    className="flex-1"
+                  >
+                    {isScraping ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Importando...
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="h-4 w-4 mr-2" />
+                        Importar Descrição
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={handleAddToBulk}
+                    disabled={!singleProductId || !singleProductUrl.trim()}
+                  >
+                    Adicionar à Lista
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="space-y-2">
-                  <Label>Descrição do Produto</Label>
-                  <Textarea 
-                    placeholder="Cole aqui a descrição copiada do site..."
-                    value={descriptionText}
-                    onChange={(e) => setDescriptionText(e.target.value)}
-                    rows={8}
-                  />
-                </div>
+            {/* Bulk Import */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Importação em Massa de Descrições
+                </CardTitle>
+                <CardDescription>
+                  Adicione vários produtos à lista e importe todas as descrições de uma vez
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isBulkScraping ? (
+                  <div className="space-y-4">
+                    <Progress value={bulkProgress} />
+                    <p className="text-sm text-muted-foreground text-center">
+                      Importando descrições... {bulkProgress}%
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {bulkUrls.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Nenhum produto na lista.</p>
+                        <p className="text-sm">Adicione produtos usando o formulário acima.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="border rounded-lg max-h-60 overflow-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted sticky top-0">
+                              <tr>
+                                <th className="text-left p-2">Produto</th>
+                                <th className="text-left p-2">URL</th>
+                                <th className="p-2 w-10"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bulkUrls.map((item) => (
+                                <tr key={item.productId} className="border-t">
+                                  <td className="p-2 truncate max-w-[200px]">
+                                    {getProductNameById(item.productId)}
+                                  </td>
+                                  <td className="p-2 truncate max-w-[200px] text-muted-foreground">
+                                    {item.url}
+                                  </td>
+                                  <td className="p-2">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8"
+                                      onClick={() => handleRemoveFromBulk(item.productId)}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
 
-                <Button 
-                  onClick={handleImportDescription}
-                  disabled={!selectedProductId || !descriptionText.trim() || isImportingDescription}
-                  className="w-full"
-                >
-                  {isImportingDescription ? 'Salvando...' : 'Salvar Descrição'}
-                </Button>
+                        <Button 
+                          onClick={handleBulkScrape}
+                          className="w-full"
+                          size="lg"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Importar {bulkUrls.length} Descrições
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Reviews Generation Tab */}
+          {/* Reviews Tab */}
           <TabsContent value="reviews">
             <Card>
               <CardHeader>
@@ -472,35 +656,31 @@ export default function AdminImportPage() {
                   Gerar Avaliações
                 </CardTitle>
                 <CardDescription>
-                  Gere avaliações automáticas para todos os produtos (2 a 30 por produto)
+                  Gere avaliações automáticas para todos os produtos (2-30 por produto)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {isGeneratingReviews ? (
                   <div className="space-y-4">
                     <Progress value={reviewProgress} />
-                    <p className="text-center text-muted-foreground">
+                    <p className="text-sm text-muted-foreground text-center">
                       Gerando avaliações... {reviewProgress}%
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <h4 className="font-medium mb-2">O que será gerado:</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• 2 a 30 avaliações por produto (aleatório)</li>
-                        <li>• Nomes de clientes brasileiros únicos</li>
-                        <li>• Comentários positivos variados</li>
-                        <li>• Notas entre 4 e 5 estrelas</li>
-                        <li>• Total de produtos: {products?.length || 0}</li>
-                      </ul>
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>{products?.length || 0}</strong> produtos serão processados.
+                        Cada produto receberá entre 2 e 30 avaliações aleatórias com nomes e comentários variados.
+                      </p>
                     </div>
 
                     <Button 
                       onClick={handleGenerateReviews}
                       disabled={!products || products.length === 0}
-                      className="w-full"
                       size="lg"
+                      className="w-full"
                     >
                       <Sparkles className="h-4 w-4 mr-2" />
                       Gerar Avaliações para Todos os Produtos

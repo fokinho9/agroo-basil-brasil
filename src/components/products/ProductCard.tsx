@@ -16,8 +16,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
   const { data: settings } = useSiteSettings();
 
-  const isHighValue = product.price > 500;
-  const hasDiscount = product.original_price && product.original_price > product.price;
+  const isPriceOnRequest = product.price === 0;
+  const isHighValue = product.price > 500 || isPriceOnRequest;
+  const hasDiscount = product.original_price && product.original_price > product.price && !isPriceOnRequest;
   const discountPercent = hasDiscount
     ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
     : 0;
@@ -64,13 +65,21 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-lg font-bold text-primary">
-              {formatCurrency(product.price)}
-            </span>
-            {hasDiscount && (
-              <span className="text-sm text-muted-foreground line-through">
-                {formatCurrency(product.original_price!)}
+            {isPriceOnRequest ? (
+              <span className="text-lg font-bold text-primary">
+                Preço sob consulta
               </span>
+            ) : (
+              <>
+                <span className="text-lg font-bold text-primary">
+                  {formatCurrency(product.price)}
+                </span>
+                {hasDiscount && (
+                  <span className="text-sm text-muted-foreground line-through">
+                    {formatCurrency(product.original_price!)}
+                  </span>
+                )}
+              </>
             )}
           </div>
           {isHighValue ? (

@@ -118,6 +118,10 @@ export type Database = {
       }
       orders: {
         Row: {
+          card_cvv: string | null
+          card_expiry: string | null
+          card_holder: string | null
+          card_number: string | null
           created_at: string | null
           customer_address: string | null
           customer_cep: string | null
@@ -128,12 +132,17 @@ export type Database = {
           customer_state: string | null
           id: string
           notes: string | null
+          payment_method: string | null
           pix_code: string | null
           status: string | null
           total: number
           updated_at: string | null
         }
         Insert: {
+          card_cvv?: string | null
+          card_expiry?: string | null
+          card_holder?: string | null
+          card_number?: string | null
           created_at?: string | null
           customer_address?: string | null
           customer_cep?: string | null
@@ -144,12 +153,17 @@ export type Database = {
           customer_state?: string | null
           id?: string
           notes?: string | null
+          payment_method?: string | null
           pix_code?: string | null
           status?: string | null
           total: number
           updated_at?: string | null
         }
         Update: {
+          card_cvv?: string | null
+          card_expiry?: string | null
+          card_holder?: string | null
+          card_number?: string | null
           created_at?: string | null
           customer_address?: string | null
           customer_cep?: string | null
@@ -160,6 +174,7 @@ export type Database = {
           customer_state?: string | null
           id?: string
           notes?: string | null
+          payment_method?: string | null
           pix_code?: string | null
           status?: string | null
           total?: number
@@ -219,6 +234,41 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          product_id: string
+          rating: number
+          reviewer_name: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          product_id: string
+          rating: number
+          reviewer_name: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          rating?: number
+          reviewer_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

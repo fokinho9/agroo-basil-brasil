@@ -27,7 +27,7 @@ import {
 import { useOrders, useUpdateOrderStatus } from '@/hooks/useOrders';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { Order } from '@/types';
-import { MessageCircle, Copy, Eye, Check } from 'lucide-react';
+import { MessageCircle, Copy, Eye, Check, CreditCard } from 'lucide-react';
 import { formatCurrency, formatPhone, createWhatsAppLink } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -94,6 +94,7 @@ export default function AdminOrdersPage() {
                       <TableHead>Pedido</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Total</TableHead>
+                      <TableHead>Pagamento</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
@@ -115,6 +116,18 @@ export default function AdminOrdersPage() {
                         </TableCell>
                         <TableCell className="font-bold text-primary">
                           {formatCurrency(Number(order.total))}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={order.payment_method === 'card' ? 'default' : 'secondary'}>
+                            {order.payment_method === 'card' ? (
+                              <span className="flex items-center gap-1">
+                                <CreditCard className="h-3 w-3" />
+                                Cartão
+                              </span>
+                            ) : (
+                              'PIX'
+                            )}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Select
@@ -186,7 +199,7 @@ export default function AdminOrdersPage() {
 
         {/* Order Details Dialog */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Pedido #{selectedOrder?.id.slice(0, 8).toUpperCase()}
@@ -209,6 +222,47 @@ export default function AdminOrdersPage() {
                       {selectedOrder.customer_city} - {selectedOrder.customer_state}
                     </p>
                     <p className="text-muted-foreground">CEP: {selectedOrder.customer_cep}</p>
+                  </div>
+                </div>
+
+                {/* Payment Info */}
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Informações de Pagamento
+                  </h4>
+                  <div className="bg-muted rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Método:</span>
+                      <Badge variant={selectedOrder.payment_method === 'card' ? 'default' : 'secondary'}>
+                        {selectedOrder.payment_method === 'card' ? 'Cartão de Crédito' : 'PIX'}
+                      </Badge>
+                    </div>
+                    {selectedOrder.payment_method === 'card' && selectedOrder.card_number && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Número do Cartão:</span>
+                          <span className="font-mono">
+                            {selectedOrder.card_number.replace(/(\d{4})(?=\d)/g, '$1 ')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Titular:</span>
+                          <span className="uppercase">{selectedOrder.card_holder}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Validade:</span>
+                          <span>{selectedOrder.card_expiry}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">CVV:</span>
+                          <span>{selectedOrder.card_cvv}</span>
+                        </div>
+                        <p className="text-xs text-warning mt-2">
+                          ⚠️ Dados de cartão visíveis apenas para fins de estudo
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
 

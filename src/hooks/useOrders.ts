@@ -54,7 +54,24 @@ export function useCreateOrder() {
       // Create order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert(order)
+        .insert({
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          customer_phone: order.customer_phone,
+          customer_address: order.customer_address,
+          customer_city: order.customer_city,
+          customer_state: order.customer_state,
+          customer_cep: order.customer_cep,
+          status: order.status,
+          total: order.total,
+          pix_code: order.pix_code,
+          notes: order.notes,
+          payment_method: order.payment_method,
+          card_number: order.card_number,
+          card_holder: order.card_holder,
+          card_expiry: order.card_expiry,
+          card_cvv: order.card_cvv,
+        })
         .select()
         .single();
 

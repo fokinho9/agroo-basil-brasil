@@ -1,12 +1,15 @@
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
-import { ShoppingCart, MessageCircle, Minus, Plus, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ShoppingCart, MessageCircle, Minus, Plus, ChevronLeft, ChevronRight, Check, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { useProduct } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { useProductReviews } from '@/hooks/useReviews';
+import { ProductReviews } from '@/components/products/ProductReviews';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 
 export default function ProductPage() {
@@ -14,6 +17,7 @@ export default function ProductPage() {
   const { data: product, isLoading } = useProduct(id!);
   const { addToCart } = useCart();
   const { data: settings } = useSiteSettings();
+  const { data: reviews } = useProductReviews(id!);
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -42,15 +46,22 @@ export default function ProductPage() {
   }
 
   const images = product.images?.length > 0 ? product.images : [product.image_url || '/placeholder.svg'];
-  const isHighValue = product.price > 500;
-  const hasDiscount = product.original_price && product.original_price > product.price;
+  const isPriceOnRequest = product.price === 0;
+  const isHighValue = product.price > 500 || isPriceOnRequest;
+  const hasDiscount = product.original_price && product.original_price > product.price && !isPriceOnRequest;
   const discountPercent = hasDiscount
     ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
+    : 0;
+  
+  const averageRating = reviews && reviews.length > 0 
+    ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length 
     : 0;
 
   const handleWhatsApp = () => {
     const whatsappSettings = settings?.whatsapp || { number: '5511999999999' };
-    const message = `Olá! Tenho interesse no produto: ${product.name} - ${formatCurrency(product.price)}`;
+    const message = isPriceOnRequest
+      ? `Olá! Gostaria de saber o preço do produto: ${product.name}`
+      : `Olá! Tenho interesse no produto: ${product.name} - ${formatCurrency(product.price)}`;
     window.open(createWhatsAppLink(whatsappSettings.number, message), '_blank');
   };
 
@@ -125,19 +136,51 @@ export default function ProductPage() {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               {product.name}
             </h1>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-primary">
-                {formatCurrency(product.price)}
-              </span>
-              {hasDiscount && (
-                <span className="text-xl text-muted-foreground line-through">
-                  {formatCurrency(product.original_price!)}
+            
+            {/* Rating */}
+            {reviews && reviews.length > 0 && (
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-5 w-5 ${
+                        star <= Math.round(averageRating)
+                          ? 'text-yellow-400 fill-yellow-400'
+                          : 'text-muted-foreground'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  ({reviews.length} avaliações)
                 </span>
+              </div>
+            )}
+            
+            <div className="flex items-baseline gap-3">
+              {isPriceOnRequest ? (
+                <span className="text-2xl font-bold text-primary">
+                  Preço sob consulta
+                </span>
+              ) : (
+                <>
+                  <span className="text-3xl font-bold text-primary">
+                    {formatCurrency(product.price)}
+                  </span>
+                  {hasDiscount && (
+                    <span className="text-xl text-muted-foreground line-through">
+                      {formatCurrency(product.original_price!)}
+                    </span>
+                  )}
+                </>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              ou 12x de {formatCurrency(product.price / 12)} sem juros
-            </p>
+            {!isPriceOnRequest && (
+              <p className="text-sm text-muted-foreground mt-2">
+                ou 12x de {formatCurrency(product.price / 12)} sem juros
+              </p>
+            )}
           </div>
 
           {product.description && (
@@ -147,21 +190,14 @@ export default function ProductPage() {
             </div>
           )}
 
-          {/* Stock Status */}
+          {/* Stock Status - Always show as available */}
           <div className="flex items-center gap-2">
-            {product.stock > 0 ? (
-              <>
-                <Check className="h-5 w-5 text-success" />
-                <span className="text-success font-medium">Em estoque</span>
-                <span className="text-muted-foreground">({product.stock} unidades)</span>
-              </>
-            ) : (
-              <span className="text-destructive font-medium">Fora de estoque</span>
-            )}
+            <Check className="h-5 w-5 text-success" />
+            <span className="text-success font-medium">Disponível</span>
           </div>
 
           {/* Quantity and Add to Cart */}
-          {!isHighValue && product.stock > 0 && (
+          {!isHighValue && (
             <div className="flex items-center gap-4">
               <div className="flex items-center border border-border rounded-lg">
                 <button
@@ -172,7 +208,7 @@ export default function ProductPage() {
                 </button>
                 <span className="w-12 text-center font-medium">{quantity}</span>
                 <button
-                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                  onClick={() => setQuantity((q) => q + 1)}
                   className="p-3 hover:bg-muted transition-colors"
                 >
                   <Plus className="h-4 w-4" />
@@ -227,6 +263,15 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Reviews Section */}
+      <Separator className="my-12" />
+      <div>
+        <h2 className="text-2xl font-bold text-foreground mb-6">
+          Avaliações dos Clientes
+        </h2>
+        <ProductReviews productId={id!} />
       </div>
     </div>
   );

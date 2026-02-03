@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Menu, X, ShoppingCart, User } from 'lucide-react';
+import { Search, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useCart } from '@/contexts/CartContext';
 import { useSearchProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { formatCurrency } from '@/lib/utils';
@@ -12,18 +11,20 @@ export function Header() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { getItemCount, setIsOpen: setCartOpen } = useCart();
   const { data: searchResults } = useSearchProducts(searchTerm);
   const { data: categories } = useCategories();
-
-  const itemCount = getItemCount();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsSearchOpen(false);
+      }
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target as Node)) {
+        setIsMobileSearchOpen(false);
       }
     }
 
@@ -36,6 +37,7 @@ export function Header() {
     if (searchTerm.trim()) {
       navigate(`/busca?q=${encodeURIComponent(searchTerm)}`);
       setIsSearchOpen(false);
+      setIsMobileSearchOpen(false);
       setSearchTerm('');
     }
   };
@@ -43,6 +45,7 @@ export function Header() {
   const handleProductClick = (productId: string) => {
     navigate(`/produto/${productId}`);
     setIsSearchOpen(false);
+    setIsMobileSearchOpen(false);
     setSearchTerm('');
   };
 
@@ -77,7 +80,7 @@ export function Header() {
             ))}
           </nav>
 
-          {/* Search Bar */}
+          {/* Search Bar Desktop */}
           <div ref={searchRef} className="relative flex-1 max-w-md mx-4 hidden md:block">
             <form onSubmit={handleSearch}>
               <div className="relative">
@@ -97,9 +100,9 @@ export function Header() {
             </form>
 
             {/* Search Results Dropdown */}
-            {isSearchOpen && searchResults && searchResults.length > 0 && (
+            {isSearchOpen && searchTerm && searchResults && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50">
-                {searchResults.map((product) => (
+                {searchResults.slice(0, 5).map((product) => (
                   <button
                     key={product.id}
                     onClick={() => handleProductClick(product.id)}
@@ -113,7 +116,7 @@ export function Header() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">{product.name}</p>
                       <p className="text-sm text-primary font-semibold">
-                        {formatCurrency(product.price)}
+                        {product.price === 0 ? 'Preço sob consulta' : formatCurrency(product.price)}
                       </p>
                     </div>
                   </button>
@@ -135,32 +138,10 @@ export function Header() {
               variant="ghost"
               size="icon"
               className="md:hidden"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
             >
               <Search className="h-5 w-5" />
             </Button>
-
-            {/* Cart Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={() => setCartOpen(true)}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Admin Link */}
-            <Link to="/admin">
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
 
             {/* Mobile Menu Toggle */}
             <Button
@@ -174,10 +155,10 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-4">
-            <form onSubmit={handleSearch} className="mb-4">
+        {/* Mobile Search Bar */}
+        {isMobileSearchOpen && (
+          <div ref={mobileSearchRef} className="md:hidden py-3 border-t border-border">
+            <form onSubmit={handleSearch}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -186,9 +167,40 @@ export function Header() {
                   className="pl-10 pr-4"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  autoFocus
                 />
               </div>
             </form>
+            {/* Mobile Search Results */}
+            {searchTerm && searchResults && searchResults.length > 0 && (
+              <div className="mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+                {searchResults.slice(0, 5).map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => handleProductClick(product.id)}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
+                  >
+                    <img
+                      src={product.image_url || '/placeholder.svg'}
+                      alt={product.name}
+                      className="w-10 h-10 object-cover rounded"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate text-sm">{product.name}</p>
+                      <p className="text-xs text-primary font-semibold">
+                        {product.price === 0 ? 'Preço sob consulta' : formatCurrency(product.price)}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-border py-4">
             <nav className="flex flex-col gap-2">
               <Link
                 to="/"

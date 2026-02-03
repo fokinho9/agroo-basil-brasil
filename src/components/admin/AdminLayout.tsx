@@ -21,13 +21,13 @@ interface AdminLayoutProps {
 }
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: Package, label: 'Produtos', path: '/admin/produtos' },
-  { icon: Tags, label: 'Categorias', path: '/admin/categorias' },
-  { icon: ShoppingCart, label: 'Pedidos', path: '/admin/pedidos' },
-  { icon: Image, label: 'Banners', path: '/admin/banners' },
-  { icon: FileUp, label: 'Importar', path: '/admin/importar' },
-  { icon: Settings, label: 'Configurações', path: '/admin/configuracoes' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/fokinho/dashboard' },
+  { icon: Package, label: 'Produtos', path: '/fokinho/produtos' },
+  { icon: Tags, label: 'Categorias', path: '/fokinho/categorias' },
+  { icon: ShoppingCart, label: 'Pedidos', path: '/fokinho/pedidos' },
+  { icon: Image, label: 'Banners', path: '/fokinho/banners' },
+  { icon: FileUp, label: 'Importar', path: '/fokinho/importar' },
+  { icon: Settings, label: 'Configurações', path: '/fokinho/configuracoes' },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
@@ -39,14 +39,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
-        navigate('/admin');
+        navigate('/fokinho');
       }
       setIsLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate('/admin');
+        navigate('/fokinho');
       }
     });
 
@@ -55,7 +55,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/admin');
+    navigate('/fokinho');
   };
 
   if (isLoading) {

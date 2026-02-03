@@ -57,47 +57,48 @@ export function ProductCard({ product }: ProductCardProps) {
             </Badge>
           )}
         </div>
-        <CardContent className="p-4">
-          <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">
+        <CardContent className="p-3 md:p-4">
+          <p className="text-[10px] md:text-xs text-muted-foreground mb-1 uppercase tracking-wide truncate">
             {product.category?.name || 'Sem categoria'}
           </p>
-          <h3 className="font-medium text-foreground line-clamp-2 min-h-[2.5rem] mb-2">
+          <h3 className="font-medium text-foreground line-clamp-2 min-h-[2.25rem] md:min-h-[2.5rem] mb-2 text-sm md:text-base">
             {product.name}
           </h3>
-          <div className="flex items-baseline gap-2 mb-3">
+          <div className="flex flex-col gap-1 mb-3">
             {isPriceOnRequest ? (
-              <span className="text-lg font-bold text-primary">
-                Preço sob consulta
+              <span className="text-sm md:text-lg font-bold text-primary">
+                Sob consulta
               </span>
             ) : (
-              <>
-                <span className="text-lg font-bold text-primary">
+              <div className="flex flex-wrap items-baseline gap-1 md:gap-2">
+                <span className="text-sm md:text-lg font-bold text-primary">
                   {formatCurrency(product.price)}
                 </span>
                 {hasDiscount && (
-                  <span className="text-sm text-muted-foreground line-through">
+                  <span className="text-xs md:text-sm text-muted-foreground line-through">
                     {formatCurrency(product.original_price!)}
                   </span>
                 )}
-              </>
+              </div>
             )}
           </div>
           {isHighValue ? (
             <Button
               variant="outline"
-              className="w-full gap-2"
+              size="sm"
+              className="w-full gap-1 md:gap-2 text-xs md:text-sm h-8 md:h-10"
               onClick={(e) => {
                 e.preventDefault();
                 handleWhatsApp();
               }}
             >
-              <MessageCircle className="h-4 w-4" />
-              Solicite via WhatsApp
+              <MessageCircle className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Solicite via</span> WhatsApp
             </Button>
           ) : (
-            <Button className="w-full gap-2" onClick={handleAddToCart}>
-              <ShoppingCart className="h-4 w-4" />
-              Comprar Agora
+            <Button size="sm" className="w-full gap-1 md:gap-2 text-xs md:text-sm h-8 md:h-10" onClick={handleAddToCart}>
+              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
+              Comprar
             </Button>
           )}
         </CardContent>

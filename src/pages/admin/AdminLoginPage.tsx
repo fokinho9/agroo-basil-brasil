@@ -43,29 +43,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleSignUp = async () => {
-    if (!email || !password) {
-      toast.error('Preencha e-mail e senha');
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      toast.success('Conta criada! Verifique seu e-mail para confirmar.');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao criar conta');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
@@ -102,15 +79,6 @@ export default function AdminLoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Entrando...' : 'Entrar'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleSignUp}
-              disabled={isLoading}
-            >
-              Criar Conta Admin
             </Button>
           </form>
         </CardContent>

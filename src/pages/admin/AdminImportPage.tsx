@@ -437,6 +437,74 @@ export default function AdminImportPage() {
     refetchProducts();
   };
 
+  // Normalize text for matching
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Extract slug from URL
+  const extractSlugFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      const lastPart = pathParts[pathParts.length - 1] || '';
+      // Remove numeric ID suffix (e.g., "produto-nome-123" -> "produto nome")
+      return normalizeText(lastPart.replace(/-\d+$/, '').replace(/-/g, ' '));
+    } catch {
+      return '';
+    }
+  };
+
+  // Match product by slug similarity
+  const findMatchingProduct = (url: string, productsList: typeof products) => {
+    if (!productsList) return null;
+    
+    const urlSlug = extractSlugFromUrl(url);
+    if (!urlSlug) return null;
+
+    let bestMatch: typeof productsList[0] | null = null;
+    let bestScore = 0;
+
+    for (const product of productsList) {
+      // Skip products that already have descriptions
+      if (product.description && product.description.trim().length > 20) {
+        continue;
+      }
+
+      const productName = normalizeText(product.name);
+      const productWords = productName.split(' ').filter(w => w.length > 2);
+      const urlWords = urlSlug.split(' ').filter(w => w.length > 2);
+
+      // Count matching words
+      let matchCount = 0;
+      for (const pWord of productWords) {
+        for (const uWord of urlWords) {
+          if (pWord.includes(uWord) || uWord.includes(pWord)) {
+            matchCount++;
+            break;
+          }
+        }
+      }
+
+      // Calculate score (percentage of product words matched)
+      const score = productWords.length > 0 ? matchCount / productWords.length : 0;
+      
+      // Need at least 50% match and at least 2 words matching
+      if (score > bestScore && score >= 0.5 && matchCount >= 2) {
+        bestScore = score;
+        bestMatch = product;
+      }
+    }
+
+    return bestMatch;
+  };
+
   // Auto bulk import - scrape site and match products
   const handleAutoBulkImport = async () => {
     if (!autoBulkUrl.trim()) {
@@ -444,8 +512,11 @@ export default function AdminImportPage() {
       return;
     }
 
-    if (!products || products.length === 0) {
-      toast.error('Nenhum produto cadastrado para importar descrições');
+    // Get only products without description
+    const productsToUpdate = products?.filter(p => !p.description || p.description.trim().length <= 20) || [];
+    
+    if (productsToUpdate.length === 0) {
+      toast.error('Todos os produtos já possuem descrição!');
       return;
     }
 
@@ -457,9 +528,7 @@ export default function AdminImportPage() {
       // First, map the site to find all product URLs
       toast.info('Mapeando o site para encontrar produtos...');
       
-      const mapResponse = await firecrawlApi.map ? 
-        await firecrawlApi.map(autoBulkUrl, { limit: 500 }) :
-        { success: false, error: 'Map not available' };
+      const mapResponse = await firecrawlApi.map(autoBulkUrl, { limit: 1000 });
       
       let productUrls: string[] = [];
       
@@ -494,17 +563,34 @@ export default function AdminImportPage() {
         return;
       }
 
-      toast.success(`${productUrls.length} páginas de produtos encontradas. Importando descrições...`);
+      toast.success(`${productUrls.length} páginas encontradas. Buscando correspondências para ${productsToUpdate.length} produtos sem descrição...`);
 
       let matched = 0;
       let updated = 0;
+      let processed = 0;
 
-      // Process each product URL
-      for (let i = 0; i < Math.min(productUrls.length, 100); i++) {
-        const productUrl = productUrls[i];
-        
+      // Pre-match URLs to products before scraping
+      const urlToProductMap: { url: string; product: typeof productsToUpdate[0] }[] = [];
+      
+      for (const url of productUrls) {
+        const match = findMatchingProduct(url, productsToUpdate);
+        if (match) {
+          urlToProductMap.push({ url, product: match });
+        }
+      }
+
+      if (urlToProductMap.length === 0) {
+        toast.error('Nenhum produto correspondente encontrado. Verifique se os nomes dos produtos correspondem às URLs do site.');
+        setIsAutoBulkScraping(false);
+        return;
+      }
+
+      toast.info(`${urlToProductMap.length} correspondências encontradas. Importando descrições...`);
+
+      // Process matched URLs
+      for (const { url, product } of urlToProductMap) {
         try {
-          const response = await firecrawlApi.scrape(productUrl, {
+          const response = await firecrawlApi.scrape(url, {
             formats: ['markdown'],
             onlyMainContent: true,
           });
@@ -512,53 +598,35 @@ export default function AdminImportPage() {
           if (response.success) {
             const markdown = response.data?.markdown || response.data?.data?.markdown || '';
             
-            // Try to extract product name from the page
-            const titleMatch = markdown.match(/^#?\s*(.+?)(?:\n|$)/m);
-            const scrapedTitle = titleMatch ? titleMatch[1].trim() : '';
-            
-            if (scrapedTitle) {
-              // Find matching product by name similarity
-              const matchingProduct = products.find(p => {
-                const pName = p.name.toLowerCase().trim();
-                const sName = scrapedTitle.toLowerCase().trim();
+            if (markdown) {
+              matched++;
+              const cleanedDescription = cleanProductDescription(markdown);
+              
+              if (cleanedDescription && cleanedDescription.length > 20) {
+                await updateProduct.mutateAsync({
+                  id: product.id,
+                  description: cleanedDescription,
+                });
+                updated++;
                 
-                // Exact match or contains
-                return pName === sName || 
-                       pName.includes(sName) || 
-                       sName.includes(pName) ||
-                       // Fuzzy match: at least 80% of words match
-                       (() => {
-                         const pWords = pName.split(/\s+/);
-                         const sWords = sName.split(/\s+/);
-                         const matchCount = pWords.filter(w => sWords.some(sw => sw.includes(w) || w.includes(sw))).length;
-                         return matchCount >= Math.min(pWords.length, sWords.length) * 0.6;
-                       })();
-              });
-
-              if (matchingProduct) {
-                matched++;
-                
-                const cleanedDescription = cleanProductDescription(markdown);
-                
-                if (cleanedDescription && cleanedDescription.length > 20) {
-                  await updateProduct.mutateAsync({
-                    id: matchingProduct.id,
-                    description: cleanedDescription,
-                  });
-                  updated++;
+                // Remove from products list to avoid duplicate updates
+                const idx = productsToUpdate.findIndex(p => p.id === product.id);
+                if (idx !== -1) {
+                  productsToUpdate.splice(idx, 1);
                 }
               }
             }
           }
         } catch (error) {
-          console.error('Error processing URL:', productUrl, error);
+          console.error('Error processing URL:', url, error);
         }
 
-        setAutoBulkProgress(Math.round(((i + 1) / Math.min(productUrls.length, 100)) * 100));
+        processed++;
+        setAutoBulkProgress(Math.round((processed / urlToProductMap.length) * 100));
         setAutoBulkResults({ matched, updated });
         
         // Delay between requests
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
 
       toast.success(`Importação automática concluída! ${updated} descrições atualizadas de ${matched} produtos encontrados.`);

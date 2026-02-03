@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
-import { useState } from 'react';
-import { ShoppingCart, MessageCircle, Minus, Plus, ChevronLeft, ChevronRight, Check, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShoppingCart, MessageCircle, Minus, Plus, ChevronLeft, ChevronRight, Check, Star, Shield, Truck, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,18 +8,53 @@ import { Separator } from '@/components/ui/separator';
 import { useProduct } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
-import { useProductReviews } from '@/hooks/useReviews';
+import { useProductReviews, useCreateReview, generateFakeReviews } from '@/hooks/useReviews';
 import { ProductReviews } from '@/components/products/ProductReviews';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id!);
   const { addToCart } = useCart();
   const { data: settings } = useSiteSettings();
-  const { data: reviews } = useProductReviews(id!);
+  const { data: reviews, refetch: refetchReviews } = useProductReviews(id!);
+  const createReview = useCreateReview();
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [reviewsGenerated, setReviewsGenerated] = useState(false);
+
+  // Auto-generate reviews if none exist
+  useEffect(() => {
+    async function generateReviewsIfNeeded() {
+      if (!id || reviewsGenerated || !product) return;
+      
+      // Check if reviews already exist
+      const { data: existingReviews } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('product_id', id)
+        .limit(1);
+
+      if (!existingReviews || existingReviews.length === 0) {
+        // Generate 2-30 random reviews
+        const reviewCount = Math.floor(Math.random() * 29) + 2;
+        const fakeReviews = generateFakeReviews(id, reviewCount);
+        
+        // Insert reviews one by one to avoid duplicates
+        for (const review of fakeReviews) {
+          await supabase.from('reviews').insert(review);
+        }
+        
+        // Refetch reviews after generating
+        refetchReviews();
+      }
+      
+      setReviewsGenerated(true);
+    }
+
+    generateReviewsIfNeeded();
+  }, [id, product, reviewsGenerated, refetchReviews]);
 
   if (isLoading) {
     return (
@@ -130,12 +165,12 @@ export default function ProductPage() {
         {/* Product Info */}
         <div className="space-y-6">
           <div>
-            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">
-              {product.category?.name || 'Sem categoria'}
-            </p>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              {product.name}
-            </h1>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+            {product.category?.name || 'Sem categoria'}
+          </p>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground mb-3 leading-tight">
+            {product.name}
+          </h1>
             
             {/* Rating */}
             {reviews && reviews.length > 0 && (
@@ -233,33 +268,19 @@ export default function ProductPage() {
             </Button>
           )}
 
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-full gap-2"
-            onClick={handleWhatsApp}
-          >
-            <MessageCircle className="h-5 w-5" />
-            Dúvidas? Fale Conosco
-          </Button>
-
-          {/* Benefits */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-success" />
-              Envio para todo Brasil
+          {/* Trust Badges */}
+          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
+            <div className="flex flex-col items-center text-center p-2 bg-muted/50 rounded-lg">
+              <Truck className="h-5 w-5 text-primary mb-1" />
+              <span className="text-xs text-muted-foreground">Frete Rápido</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-success" />
-              Pagamento via PIX
+            <div className="flex flex-col items-center text-center p-2 bg-muted/50 rounded-lg">
+              <Shield className="h-5 w-5 text-primary mb-1" />
+              <span className="text-xs text-muted-foreground">Compra Segura</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-success" />
-              Garantia de qualidade
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-success" />
-              Suporte especializado
+            <div className="flex flex-col items-center text-center p-2 bg-muted/50 rounded-lg">
+              <CreditCard className="h-5 w-5 text-primary mb-1" />
+              <span className="text-xs text-muted-foreground">12x Sem Juros</span>
             </div>
           </div>
         </div>

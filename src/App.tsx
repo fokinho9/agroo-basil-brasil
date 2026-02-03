@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CartProvider } from "@/contexts/CartContext";
 import { Layout } from "@/components/layout/Layout";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 import HomePage from "@/pages/HomePage";
 import ProductsPage from "@/pages/ProductsPage";
@@ -34,6 +35,7 @@ const App = () => (
       <CartProvider>
         <Toaster />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<Layout><HomePage /></Layout>} />
             <Route path="/produtos" element={<Layout><ProductsPage /></Layout>} />

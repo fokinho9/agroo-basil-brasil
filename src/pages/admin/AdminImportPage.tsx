@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCreateProduct, useAdminProducts, useUpdateProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
@@ -14,6 +15,103 @@ import { firecrawlApi } from '@/lib/api/firecrawl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2 } from 'lucide-react';
+
+// Function to clean and extract only the product description
+function cleanProductDescription(rawMarkdown: string): string {
+  // Common patterns to remove (navigation, prices, cart buttons, etc.)
+  const patternsToRemove = [
+    /^-\s*PROTEC HORSE.*$/gim,
+    /^-\s*P\/\s*\w+.*$/gim,
+    /!\[.*?\].*$/gm, // Remove image references
+    /^\s*-\s*!\[.*$/gm, // Remove list items with images
+    /R\$\s*[\d.,]+/g, // Remove prices
+    /\d+x\s*de\s*R\$.*$/gim, // Remove installment info
+    /FRETE\s*GR[ÁA]TIS/gi,
+    /ADICIONAR\s*AO\s*CARRINHO/gi,
+    /Calcular\s*Prazos.*$/gim,
+    /Compartilhe.*$/gim,
+    /Mais\s*formas\s*de\s*pagamento.*$/gim,
+    /Transfer[êe]ncia\s*Banc[áa]ria.*$/gim,
+    /Cart[ãa]o\s*De\s*Cr[ée]dito.*$/gim,
+    /Boleto\s*Banc[áa]rio.*$/gim,
+    /Pix\s*Condi[çc][õo]es.*$/gim,
+    /^\s*\|.*\|.*$/gm, // Remove table rows
+    /^\s*-\s*\(.*USA\).*$/gm, // Remove size options
+    /ESCOLHA\s*A\s*COR.*$/gim,
+    /Tamanho\s*de\s*Cal[çc]a.*$/gim,
+    /N[ãa]o\s*sei\s*meu\s*CEP/gi,
+    /^\s*OK\s*$/gm,
+    /com\s*\d+%\s*de\s*desconto/gi,
+    /Total:\s*R\$.*$/gim,
+    /sem\s*juros/gi,
+    /à\s*vista\s*no\s*Pix/gi,
+    /Em\s*compras\s*[àa]\s*partir.*$/gim,
+    /\\\*/g, // Remove escaped asterisks
+    /^\s*-\s*$/gm, // Remove empty list items
+    /^\s*-\s*\s*$/gm, // Remove empty list items
+  ];
+
+  let cleaned = rawMarkdown;
+
+  // Apply all removal patterns
+  for (const pattern of patternsToRemove) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+
+  // Remove markdown headers but keep the content
+  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+  
+  // Convert links to plain text
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+  // Try to find the actual product description section
+  // Look for common description indicators
+  const descriptionMarkers = [
+    /DETALHES\s*DO\s*PRODUTO[:\s]*/gi,
+    /DESCRI[ÇC][ÃA]O[:\s]*/gi,
+    /SOBRE\s*O\s*PRODUTO[:\s]*/gi,
+    /INFORMA[ÇC][ÕO]ES[:\s]*/gi,
+  ];
+
+  for (const marker of descriptionMarkers) {
+    const match = cleaned.match(marker);
+    if (match) {
+      const index = cleaned.indexOf(match[0]);
+      if (index !== -1) {
+        // Get content after the marker
+        let descriptionPart = cleaned.substring(index + match[0].length);
+        
+        // Try to find where the description ends (next section or too many empty lines)
+        const nextSectionMatch = descriptionPart.match(/\n\n(?:AVALIA[ÇC][ÕO]ES|COMENT[ÁA]RIOS|PRODUTOS\s*RELACIONADOS|ESPECIFICA[ÇC][ÕO]ES)/i);
+        if (nextSectionMatch) {
+          descriptionPart = descriptionPart.substring(0, nextSectionMatch.index);
+        }
+        
+        cleaned = descriptionPart;
+        break;
+      }
+    }
+  }
+
+  // Clean up extra whitespace and empty lines
+  cleaned = cleaned
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 2) // Remove very short lines
+    .filter(line => !line.match(/^\s*-\s*$/)) // Remove empty list markers
+    .filter(line => !line.match(/^\*+$/)) // Remove lines that are just asterisks
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .trim();
+
+  // If the result is too short, it probably failed to extract properly
+  if (cleaned.length < 20) {
+    return '';
+  }
+
+  // Limit to 2000 chars for a clean description
+  return cleaned.substring(0, 2000);
+}
 
 interface ProductRow {
   name: string;
@@ -94,6 +192,8 @@ export default function AdminImportPage() {
   const [singleProductId, setSingleProductId] = useState('');
   const [singleProductUrl, setSingleProductUrl] = useState('');
   const [isScraping, setIsScraping] = useState(false);
+  const [previewDescription, setPreviewDescription] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
 
   // Bulk description import
   const [bulkUrls, setBulkUrls] = useState<{ productId: string; url: string }[]>([]);
@@ -197,6 +297,8 @@ export default function AdminImportPage() {
     }
 
     setIsScraping(true);
+    setShowPreview(false);
+    setPreviewDescription('');
 
     try {
       const response = await firecrawlApi.scrape(singleProductUrl, {
@@ -214,27 +316,46 @@ export default function AdminImportPage() {
         throw new Error('Nenhuma descrição encontrada na página');
       }
 
-      // Clean up markdown - remove excessive headers and keep content
-      const cleanedDescription = description
-        .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to plain text
-        .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
-        .trim()
-        .substring(0, 5000); // Limit to 5000 chars
+      // Use the improved cleaning function
+      const cleanedDescription = cleanProductDescription(description);
 
-      await updateProduct.mutateAsync({
-        id: singleProductId,
-        description: cleanedDescription,
-      });
-
-      toast.success('Descrição importada e atualizada com sucesso!');
-      setSingleProductUrl('');
-      setSingleProductId('');
+      if (!cleanedDescription) {
+        toast.error('Não foi possível extrair a descrição do produto. Tente editar manualmente.');
+        setPreviewDescription(description.substring(0, 2000));
+        setShowPreview(true);
+      } else {
+        setPreviewDescription(cleanedDescription);
+        setShowPreview(true);
+        toast.success('Descrição extraída! Revise e confirme abaixo.');
+      }
     } catch (error: any) {
       console.error('Error scraping:', error);
       toast.error(error.message || 'Erro ao importar descrição');
     } finally {
       setIsScraping(false);
+    }
+  };
+
+  // Save the previewed description
+  const handleSaveDescription = async () => {
+    if (!singleProductId || !previewDescription.trim()) {
+      toast.error('Selecione um produto e verifique a descrição');
+      return;
+    }
+
+    try {
+      await updateProduct.mutateAsync({
+        id: singleProductId,
+        description: previewDescription.trim(),
+      });
+
+      toast.success('Descrição salva com sucesso!');
+      setSingleProductUrl('');
+      setSingleProductId('');
+      setPreviewDescription('');
+      setShowPreview(false);
+    } catch (error: any) {
+      toast.error('Erro ao salvar descrição');
     }
   };
 
@@ -286,18 +407,15 @@ export default function AdminImportPage() {
           const description = response.data?.markdown || response.data?.data?.markdown || '';
           
           if (description) {
-            const cleanedDescription = description
-              .replace(/^#{1,6}\s+/gm, '')
-              .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-              .replace(/!\[.*?\]\(.*?\)/g, '')
-              .trim()
-              .substring(0, 5000);
+            const cleanedDescription = cleanProductDescription(description);
 
-            await updateProduct.mutateAsync({
-              id: item.productId,
-              description: cleanedDescription,
-            });
-            success++;
+            if (cleanedDescription) {
+              await updateProduct.mutateAsync({
+                id: item.productId,
+                description: cleanedDescription,
+              });
+              success++;
+            }
           }
         }
       } catch (error) {
@@ -565,6 +683,34 @@ export default function AdminImportPage() {
                     Adicionar à Lista
                   </Button>
                 </div>
+
+                {/* Preview and Edit Description */}
+                {showPreview && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <Label>Prévia da Descrição (edite se necessário)</Label>
+                    <Textarea
+                      value={previewDescription}
+                      onChange={(e) => setPreviewDescription(e.target.value)}
+                      rows={8}
+                      placeholder="Descrição do produto..."
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveDescription} className="flex-1">
+                        <Check className="h-4 w-4 mr-2" />
+                        Salvar Descrição
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowPreview(false);
+                          setPreviewDescription('');
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

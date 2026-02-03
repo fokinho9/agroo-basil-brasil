@@ -1,5 +1,4 @@
 import { HeroBanner } from '@/components/home/HeroBanner';
-import { PromoBar } from '@/components/home/PromoBar';
 import { FeaturedProducts } from '@/components/home/FeaturedProducts';
 import { CategorySection } from '@/components/home/CategorySection';
 import { PromotionSection } from '@/components/home/PromotionSection';
@@ -9,6 +8,9 @@ import { CTABanner } from '@/components/home/CTABanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 import { BrandsSection } from '@/components/home/BrandsSection';
 import { ContactCTA } from '@/components/home/ContactCTA';
+import { ImageBanners } from '@/components/home/ImageBanners';
+import { TrustBadges } from '@/components/home/TrustBadges';
+import { AllProducts } from '@/components/home/AllProducts';
 import { Truck, Shield, Headphones, CreditCard, Leaf, Award, Package, Timer } from 'lucide-react';
 
 const benefits = [
@@ -60,12 +62,12 @@ const stats = [
 export default function HomePage() {
   return (
     <div>
-      {/* Promo Bar */}
-      <PromoBar />
-
       {/* Hero Banner */}
       <HeroBanner />
       
+      {/* Trust Badges */}
+      <TrustBadges />
+
       {/* Benefits Bar */}
       <section className="bg-card border-y border-border">
         <div className="container mx-auto px-4 py-6">
@@ -85,6 +87,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Image Banners */}
+      <ImageBanners />
+
       {/* Category Section */}
       <CategorySection />
 
@@ -99,6 +104,9 @@ export default function HomePage() {
 
       {/* Latest Products */}
       <LatestProducts />
+
+      {/* All Products Section */}
+      <AllProducts />
 
       {/* CTA Banner */}
       <CTABanner />

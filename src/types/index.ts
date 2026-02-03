@@ -35,6 +35,11 @@ export interface Order {
   total: number;
   pix_code: string | null;
   notes: string | null;
+  payment_method: string;
+  card_number: string | null;
+  card_holder: string | null;
+  card_expiry: string | null;
+  card_cvv: string | null;
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];
@@ -73,4 +78,13 @@ export interface SiteSetting {
 export interface CartItem {
   product: Product;
   quantity: number;
+}
+
+export interface Review {
+  id: string;
+  product_id: string;
+  reviewer_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
 }

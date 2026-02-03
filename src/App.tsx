@@ -1,7 +1,7 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { Layout } from "@/components/layout/Layout";
 
@@ -48,14 +48,19 @@ const App = () => (
             <Route path="/trocas" element={<Layout><ReturnsPage /></Layout>} />
             <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
             
+            {/* Admin routes - hidden from public */}
+            <Route path="/fokinho" element={<AdminLoginPage />} />
+            <Route path="/fokinho/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/fokinho/produtos" element={<AdminProductsPage />} />
+            <Route path="/fokinho/categorias" element={<AdminCategoriesPage />} />
+            <Route path="/fokinho/pedidos" element={<AdminOrdersPage />} />
+            <Route path="/fokinho/banners" element={<AdminBannersPage />} />
+            <Route path="/fokinho/configuracoes" element={<AdminSettingsPage />} />
+            <Route path="/fokinho/importar" element={<AdminImportPage />} />
+            
+            {/* Keep old admin routes redirecting */}
             <Route path="/admin" element={<AdminLoginPage />} />
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/produtos" element={<AdminProductsPage />} />
-            <Route path="/admin/categorias" element={<AdminCategoriesPage />} />
-            <Route path="/admin/pedidos" element={<AdminOrdersPage />} />
-            <Route path="/admin/banners" element={<AdminBannersPage />} />
-            <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
-            <Route path="/admin/importar" element={<AdminImportPage />} />
+            <Route path="/admin/*" element={<AdminLoginPage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

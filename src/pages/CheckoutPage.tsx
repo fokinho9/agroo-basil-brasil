@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/contexts/CartContext';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<'form' | 'payment'>('form');
   const [pixCode, setPixCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,6 +31,11 @@ export default function CheckoutPage() {
     address: '',
     city: '',
     state: '',
+    // Card fields (for study purposes)
+    cardNumber: '',
+    cardHolder: '',
+    cardExpiry: '',
+    cardCvv: '',
   });
 
   const total = getTotal();
@@ -51,12 +58,32 @@ export default function CheckoutPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\D/g, '').slice(0, 16);
+    return v.replace(/(\d{4})(?=\d)/g, '$1 ');
+  };
+
+  const formatCardExpiry = (value: string) => {
+    const v = value.replace(/\D/g, '').slice(0, 4);
+    if (v.length >= 2) {
+      return v.slice(0, 2) + '/' + v.slice(2);
+    }
+    return v;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.phone) {
       toast.error('Preencha os campos obrigatórios');
       return;
+    }
+
+    if (paymentMethod === 'card') {
+      if (!formData.cardNumber || !formData.cardHolder || !formData.cardExpiry || !formData.cardCvv) {
+        toast.error('Preencha todos os dados do cartão');
+        return;
+      }
     }
 
     try {
@@ -73,6 +100,11 @@ export default function CheckoutPage() {
           total: finalTotal,
           pix_code: null,
           notes: null,
+          payment_method: paymentMethod,
+          card_number: paymentMethod === 'card' ? formData.cardNumber.replace(/\s/g, '') : null,
+          card_holder: paymentMethod === 'card' ? formData.cardHolder : null,
+          card_expiry: paymentMethod === 'card' ? formData.cardExpiry : null,
+          card_cvv: paymentMethod === 'card' ? formData.cardCvv : null,
         },
         items: items.map((item) => ({
           product_id: item.product.id,
@@ -82,9 +114,16 @@ export default function CheckoutPage() {
         })),
       });
 
-      const code = generatePixCode(order.id, finalTotal);
-      setPixCode(code);
-      setStep('payment');
+      if (paymentMethod === 'pix') {
+        const code = generatePixCode(order.id, finalTotal);
+        setPixCode(code);
+        setStep('payment');
+      } else {
+        // For card payment, go directly to success
+        clearCart();
+        toast.success('Pedido realizado com sucesso! Pagamento em processamento.');
+        navigate('/');
+      }
     } catch (error) {
       toast.error('Erro ao processar pedido. Tente novamente.');
     }
@@ -249,9 +288,91 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                <Separator />
+
+                {/* Payment Method */}
+                <div>
+                  <Label className="text-base font-semibold">Forma de Pagamento</Label>
+                  <RadioGroup
+                    value={paymentMethod}
+                    onValueChange={(value) => setPaymentMethod(value as 'pix' | 'card')}
+                    className="mt-3 space-y-3"
+                  >
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
+                      <RadioGroupItem value="pix" id="pix" />
+                      <Label htmlFor="pix" className="flex-1 cursor-pointer">
+                        <span className="font-medium">PIX</span>
+                        <span className="block text-sm text-muted-foreground">Pagamento instantâneo</span>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
+                      <RadioGroupItem value="card" id="card" />
+                      <Label htmlFor="card" className="flex-1 cursor-pointer">
+                        <span className="font-medium">Cartão de Crédito</span>
+                        <span className="block text-sm text-muted-foreground">Parcelamento disponível</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Card Fields */}
+                {paymentMethod === 'card' && (
+                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label htmlFor="cardNumber">Número do Cartão *</Label>
+                      <Input
+                        id="cardNumber"
+                        name="cardNumber"
+                        value={formData.cardNumber}
+                        onChange={(e) => setFormData(prev => ({ ...prev, cardNumber: formatCardNumber(e.target.value) }))}
+                        placeholder="0000 0000 0000 0000"
+                        maxLength={19}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cardHolder">Nome no Cartão *</Label>
+                      <Input
+                        id="cardHolder"
+                        name="cardHolder"
+                        value={formData.cardHolder}
+                        onChange={handleInputChange}
+                        placeholder="NOME COMO ESTÁ NO CARTÃO"
+                        className="uppercase"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="cardExpiry">Validade *</Label>
+                        <Input
+                          id="cardExpiry"
+                          name="cardExpiry"
+                          value={formData.cardExpiry}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cardExpiry: formatCardExpiry(e.target.value) }))}
+                          placeholder="MM/AA"
+                          maxLength={5}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="cardCvv">CVV *</Label>
+                        <Input
+                          id="cardCvv"
+                          name="cardCvv"
+                          value={formData.cardCvv}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cardCvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                          placeholder="123"
+                          maxLength={4}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ Ambiente de testes - Não use dados reais de cartão
+                    </p>
+                  </div>
+                )}
+
                 <Button type="submit" size="lg" className="w-full gap-2" disabled={createOrder.isPending}>
                   <CreditCard className="h-5 w-5" />
-                  {createOrder.isPending ? 'Processando...' : 'Ir para Pagamento'}
+                  {createOrder.isPending ? 'Processando...' : paymentMethod === 'pix' ? 'Ir para Pagamento' : 'Finalizar Compra'}
                 </Button>
               </form>
             </CardContent>

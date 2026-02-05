@@ -25,12 +25,6 @@ export function ContactCTA() {
                   Falar no WhatsApp
                 </Button>
               </a>
-              <a href="tel:+5511999999999">
-                <Button size="lg" variant="outline" className="gap-2 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
-                  <Phone className="h-5 w-5" />
-                  Ligar Agora
-                </Button>
-              </a>
             </div>
           </div>
 

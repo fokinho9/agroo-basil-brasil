@@ -9,8 +9,11 @@ import { Progress } from '@/components/ui/progress';
 import { useProduct } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
-import { useProductReviews, useCreateReview, generateFakeReviews } from '@/hooks/useReviews';
+import { useProductReviews, generateFakeReviews } from '@/hooks/useReviews';
 import { ProductReviews } from '@/components/products/ProductReviews';
+import { RelatedProducts } from '@/components/products/RelatedProducts';
+import { FloatingBuyButton } from '@/components/products/FloatingBuyButton';
+import { ProductStoreSection } from '@/components/products/ProductStoreSection';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -72,13 +75,13 @@ function ViewingNow() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-lg">
+    <div className="flex items-center gap-2 text-sm bg-secondary/20 px-3 py-2 rounded-lg">
       <div className="flex -space-x-2">
         <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center">
           <Users className="h-3 w-3 text-primary" />
         </div>
       </div>
-      <span className="text-amber-700 dark:text-amber-400 font-medium">
+      <span className="text-secondary-foreground font-medium">
         {viewers} pessoas visualizando agora
       </span>
     </div>
@@ -311,10 +314,10 @@ export default function ProductPage() {
 
           {/* Scarcity - Low Stock Warning */}
           {!isPriceOnRequest && (
-            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30">
+              <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
+                <p className="text-sm font-medium text-destructive">
                   Restam apenas {fakeStock} unidades!
                 </p>
                 <Progress value={(fakeStock / 15) * 100} className="h-1.5 mt-1" />
@@ -331,7 +334,7 @@ export default function ProductPage() {
           {/* Quantity and Add to Cart */}
           {!isHighValue && (
             <div className="space-y-3">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <div className="flex items-center border-2 border-border rounded-xl overflow-hidden">
                   <button
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -339,7 +342,7 @@ export default function ProductPage() {
                   >
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="w-12 text-center font-bold text-lg">{quantity}</span>
+                  <span className="w-10 text-center font-bold text-lg">{quantity}</span>
                   <button
                     onClick={() => setQuantity((q) => q + 1)}
                     className="p-3 hover:bg-muted transition-colors"
@@ -349,7 +352,7 @@ export default function ProductPage() {
                 </div>
                 <Button 
                   size="lg" 
-                  className="flex-1 gap-2 h-14 text-base font-bold"
+                  className="flex-1 gap-2 h-12 text-sm md:text-base font-bold"
                   onClick={handleAddToCart}
                   disabled={isAddingToCart}
                 >
@@ -357,16 +360,6 @@ export default function ProductPage() {
                   {isAddingToCart ? 'Adicionado!' : 'COMPRAR AGORA'}
                 </Button>
               </div>
-              
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full gap-2 h-12"
-                onClick={handleWhatsApp}
-              >
-                <MessageCircle className="h-5 w-5" />
-                Tire suas dúvidas no WhatsApp
-              </Button>
             </div>
           )}
 
@@ -431,6 +424,22 @@ export default function ProductPage() {
         </h2>
         <ProductReviews productId={id!} />
       </div>
+
+      {/* Related Products */}
+      <Separator className="my-10" />
+      <RelatedProducts productId={id!} categoryId={product.category_id} />
+
+      {/* Store Section with Instagram */}
+      <ProductStoreSection />
+
+      {/* Floating Buy Button */}
+      <FloatingBuyButton
+        productName={product.name}
+        price={product.price}
+        isHighValue={isHighValue}
+        onAddToCart={handleAddToCart}
+        whatsappNumber={settings?.whatsapp?.number || '5511999999999'}
+      />
     </div>
   );
 }

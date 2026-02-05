@@ -1,6 +1,4 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ProductGrid } from '@/components/products/ProductGrid';
 import { useFeaturedProducts } from '@/hooks/useProducts';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,34 +12,25 @@ export function FeaturedProducts() {
   const isMobile = useIsMobile();
 
   return (
-    <section className="py-12 md:py-16">
-      <div className="container mx-auto px-4">
+    <section className="py-12 md:py-16 relative overflow-hidden">
+      {/* Soft gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 via-primary/5 to-secondary/10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
+      
+      <div className="container mx-auto px-4 relative z-10">
         {/* Banner Image */}
         <Link to="/produtos?busca=manta+boots+horse" className="block mb-8">
           <img 
             src={isMobile ? mantasMobile : mantasDesktop} 
             alt="Mantas Boots Horse - Conforto e proteção para seu cavalo"
-            className="w-full h-auto rounded-2xl shadow-lg hover:shadow-xl transition-shadow"
+            className="w-full h-auto rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]"
           />
         </Link>
 
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              Mantas Boots Horse
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Qualidade e conforto para seu cavalo
-            </p>
-          </div>
-          <Link to="/produtos?busca=manta+boots+horse">
-            <Button variant="ghost" className="gap-2">
-              Ver Todos
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        {/* Products Grid */}
+        <div className="bg-white/60 dark:bg-card/60 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-lg">
+          <ProductGrid products={products} isLoading={isLoading} />
         </div>
-        <ProductGrid products={products} isLoading={isLoading} />
       </div>
     </section>
   );

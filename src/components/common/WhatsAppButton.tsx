@@ -19,12 +19,12 @@ export function WhatsAppButton() {
   return (
     <button
       onClick={handleClick}
-      className={`fixed left-4 md:left-6 z-40 bg-success hover:bg-success/90 text-success-foreground rounded-full p-4 md:p-5 shadow-lg transition-all hover:scale-110 animate-bounce-subtle ${
-        isFloatingBuyVisible ? 'bottom-24' : 'bottom-6'
+      className={`fixed left-4 md:left-6 z-40 bg-success hover:bg-success/90 text-success-foreground rounded-full p-5 md:p-6 shadow-xl transition-all hover:scale-110 animate-bounce-subtle ${
+        isFloatingBuyVisible ? 'bottom-28 md:bottom-32' : 'bottom-6 md:bottom-8'
       }`}
       aria-label="Falar pelo WhatsApp"
     >
-      <MessageCircle className="h-6 w-6 md:h-7 md:w-7" />
+      <MessageCircle className="h-7 w-7 md:h-8 md:w-8" />
     </button>
   );
 }

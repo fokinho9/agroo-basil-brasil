@@ -26,29 +26,29 @@ export function MiniFloatingCart() {
 
   return (
     <div 
-      className={`fixed right-4 z-40 transition-all duration-300 ${
-        isFloatingBuyVisible ? 'bottom-24' : 'bottom-6'
+      className={`fixed right-4 md:right-6 z-40 transition-all duration-300 ${
+        isFloatingBuyVisible ? 'bottom-28 md:bottom-32' : 'bottom-6 md:bottom-8'
       }`}
     >
       <Button
         size="lg"
         onClick={() => setIsOpen(true)}
         className={`
-          relative flex items-center gap-3 md:gap-4 px-4 md:px-5 py-6 md:py-7 shadow-xl rounded-full
+          relative flex items-center gap-3 md:gap-4 px-5 md:px-6 py-7 md:py-8 shadow-xl rounded-full
           bg-primary hover:bg-primary/90 text-primary-foreground
           transition-all duration-300
           ${isAnimating ? 'animate-bounce scale-110' : ''}
         `}
       >
         <div className="relative">
-          <ShoppingBag className="h-6 w-6 md:h-7 md:w-7" />
-          <span className="absolute -top-2 -right-2 bg-secondary text-secondary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <ShoppingBag className="h-7 w-7 md:h-8 md:w-8" />
+          <span className="absolute -top-2 -right-2 bg-secondary text-secondary-foreground text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
             {itemCount}
           </span>
         </div>
         <div className="flex flex-col items-start">
           <span className="text-xs md:text-sm opacity-80">Ver carrinho</span>
-          <span className="font-bold text-sm md:text-base">{formatCurrency(getTotal())}</span>
+          <span className="font-bold text-base md:text-lg">{formatCurrency(getTotal())}</span>
         </div>
       </Button>
     </div>

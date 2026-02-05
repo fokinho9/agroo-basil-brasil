@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { formatCurrency } from '@/lib/utils';
+import { CartUpsell } from './CartUpsell';
 
 export function FloatingCart() {
   const { items, isOpen, setIsOpen, updateQuantity, removeFromCart, getTotal } = useCart();
@@ -91,6 +92,11 @@ export function FloatingCart() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Upsell Section */}
+        <div className="px-4 pb-2">
+          <CartUpsell />
         </div>
 
         {/* Footer */}

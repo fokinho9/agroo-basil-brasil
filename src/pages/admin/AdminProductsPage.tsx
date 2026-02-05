@@ -31,9 +31,12 @@ import {
 import { useAdminProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+
+type ProductFilter = 'all' | 'no-image' | 'no-description' | 'no-price';
 
 export default function AdminProductsPage() {
   const { data: products, isLoading } = useAdminProducts();
@@ -43,6 +46,7 @@ export default function AdminProductsPage() {
   const deleteProduct = useDeleteProduct();
 
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<ProductFilter>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -57,9 +61,28 @@ export default function AdminProductsPage() {
     featured: false,
   });
 
-  const filteredProducts = products?.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Count products with issues
+  const productsWithoutImage = products?.filter(p => !p.image_url || p.image_url.trim() === '') || [];
+  const productsWithoutDescription = products?.filter(p => !p.description || p.description.trim().length < 20) || [];
+  const productsWithoutPrice = products?.filter(p => !p.price || p.price === 0) || [];
+
+  const filteredProducts = products?.filter((p) => {
+    // First apply search filter
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Then apply category filter
+    switch (filter) {
+      case 'no-image':
+        return !p.image_url || p.image_url.trim() === '';
+      case 'no-description':
+        return !p.description || p.description.trim().length < 20;
+      case 'no-price':
+        return !p.price || p.price === 0;
+      default:
+        return true;
+    }
+  });
 
   const resetForm = () => {
     setFormData({
@@ -266,7 +289,40 @@ export default function AdminProductsPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge 
+                  variant={filter === 'all' ? 'default' : 'outline'} 
+                  className="cursor-pointer"
+                  onClick={() => setFilter('all')}
+                >
+                  Todos ({products?.length || 0})
+                </Badge>
+                <Badge 
+                  variant={filter === 'no-image' ? 'default' : 'outline'} 
+                  className="cursor-pointer gap-1"
+                  onClick={() => setFilter('no-image')}
+                >
+                  <ImageOff className="h-3 w-3" />
+                  Sem Imagem ({productsWithoutImage.length})
+                </Badge>
+                <Badge 
+                  variant={filter === 'no-description' ? 'default' : 'outline'} 
+                  className="cursor-pointer gap-1"
+                  onClick={() => setFilter('no-description')}
+                >
+                  <FileText className="h-3 w-3" />
+                  Sem Descrição ({productsWithoutDescription.length})
+                </Badge>
+                <Badge 
+                  variant={filter === 'no-price' ? 'default' : 'outline'} 
+                  className="cursor-pointer gap-1"
+                  onClick={() => setFilter('no-price')}
+                >
+                  <DollarSign className="h-3 w-3" />
+                  Sem Preço ({productsWithoutPrice.length})
+                </Badge>
+              </div>
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

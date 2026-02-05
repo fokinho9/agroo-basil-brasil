@@ -105,55 +105,117 @@ interface ProductRow {
   original_price: number;
   price: number;
   brand: string;
+  source_url?: string;
+}
+
+// Detect CSV format based on headers
+type CSVFormat = 'protechorse' | 'simplescraper' | 'unknown';
+
+function detectCSVFormat(headerLine: string): CSVFormat {
+  const lowerHeader = headerLine.toLowerCase();
+  if (lowerHeader.includes('product-image-area') && lowerHeader.includes('product-title')) {
+    return 'simplescraper';
+  }
+  if (lowerHeader.includes('sku') || lowerHeader.includes('imagem')) {
+    return 'protechorse';
+  }
+  return 'unknown';
+}
+
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let j = 0; j < line.length; j++) {
+    const char = line[j];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      values.push(current.trim().replace(/^"|"$/g, ''));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim().replace(/^"|"$/g, ''));
+  return values;
+}
+
+function parseBrazilianPrice(priceStr: string): number {
+  if (!priceStr || priceStr.toLowerCase().includes('consulta')) return 0;
+  // Remove R$, spaces, dots (thousand separator), and replace comma with dot
+  const cleaned = priceStr.replace(/[R$\s.]/g, '').replace(',', '.');
+  return parseFloat(cleaned) || 0;
 }
 
 function parseCSV(csvText: string): ProductRow[] {
-  const lines = csvText.split('\n');
+  const lines = csvText.split('\n').filter(line => line.trim());
+  if (lines.length < 2) return [];
+
+  const headerLine = lines[0];
+  const format = detectCSVFormat(headerLine);
   const products: ProductRow[] = [];
 
+  console.log('Detected CSV format:', format);
+
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
+    const values = parseCSVLine(lines[i]);
+    
+    let product: ProductRow | null = null;
 
-    const values: string[] = [];
-    let current = '';
-    let inQuotes = false;
+    if (format === 'simplescraper') {
+      // SimpleScraper format:
+      // 0: product-image-area (image URL)
+      // 1: product-title (name)
+      // 2: product-title_link (source URL)
+      // 3: text-dark (brand)
+      // 4: price-discount (discounted price - original)
+      // 5: product-price-new (current price)
+      const imageUrl = values[0] || '';
+      const name = values[1] || '';
+      const sourceUrl = values[2] || '';
+      const brand = values[3] || '';
+      const discountPrice = parseBrazilianPrice(values[4] || '');
+      const newPrice = parseBrazilianPrice(values[5] || '');
+      
+      // Use newPrice as current, discountPrice as original (if higher)
+      const currentPrice = newPrice || discountPrice;
+      const originalPrice = discountPrice > currentPrice ? discountPrice : 0;
 
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim());
-        current = '';
-      } else {
-        current += char;
+      if (name) {
+        product = {
+          name: name.length > 100 ? name.substring(0, 97) + '...' : name,
+          image_url: imageUrl,
+          original_price: originalPrice,
+          price: currentPrice,
+          brand,
+          source_url: sourceUrl,
+        };
+      }
+    } else {
+      // Original protechorse format
+      const imageUrl = values[1] || '';
+      const name = values[3] || '';
+      const brand = values[4] || '';
+      const priceStr = values[5] || '';
+      const currentPrice = parseBrazilianPrice(priceStr);
+      const originalPriceStr = values[10] || '';
+      const originalPrice = parseBrazilianPrice(originalPriceStr);
+
+      if (name) {
+        product = {
+          name: name.length > 100 ? name.substring(0, 97) + '...' : name,
+          image_url: imageUrl,
+          original_price: originalPrice > currentPrice ? originalPrice : 0,
+          price: currentPrice,
+          brand,
+        };
       }
     }
-    values.push(current.trim());
 
-    const imageUrl = values[1]?.replace(/"/g, '') || '';
-    const name = values[3]?.replace(/"/g, '') || '';
-    const brand = values[4]?.replace(/"/g, '') || '';
-    
-    const priceStr = values[5]?.replace(/"/g, '') || '';
-    let currentPrice = 0;
-    
-    if (!priceStr.includes('consulta') && priceStr.includes('R$')) {
-      currentPrice = parseFloat(priceStr.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-    }
-    
-    const originalPriceStr = values[10]?.replace(/"/g, '').replace(/[R$\s.]/g, '').replace(',', '.') || '0';
-    const originalPrice = parseFloat(originalPriceStr) || 0;
-
-    if (name) {
-      products.push({
-        name: name.length > 100 ? name.substring(0, 97) + '...' : name,
-        image_url: imageUrl,
-        original_price: originalPrice > currentPrice ? originalPrice : 0,
-        price: currentPrice,
-        brand,
-      });
+    if (product) {
+      products.push(product);
     }
   }
 

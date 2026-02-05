@@ -48,7 +48,7 @@ export default function AdminOrdersPage() {
   const [copiedPix, setCopiedPix] = useState<string | null>(null);
 
   const handleWhatsApp = (order: Order) => {
-    const whatsappNumber = settings?.whatsapp?.number || '5511999999999';
+    const whatsappNumber = settings?.whatsapp?.number || '5511972238165';
     const message = `Olá ${order.customer_name}! Aqui é da AgroShop. Estou entrando em contato sobre seu pedido #${order.id.slice(0, 8).toUpperCase()} no valor de ${formatCurrency(Number(order.total))}.`;
     window.open(createWhatsAppLink(order.customer_phone || whatsappNumber, message), '_blank');
   };

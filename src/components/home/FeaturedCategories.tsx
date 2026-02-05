@@ -6,59 +6,35 @@ import diversosImg from '@/assets/categories/diversos.jpg';
 import higieneImg from '@/assets/categories/higiene.jpg';
 import vestuarioImg from '@/assets/categories/vestuario.jpg';
 import calcadosImg from '@/assets/categories/calcados.jpg';
-
-const featuredCategories = [
-  {
-    name: 'Diversos',
-    image: diversosImg,
-    description: 'Acessórios e itens variados',
-    slug: 'diversos',
-  },
-  {
-    name: 'Higiene',
-    image: higieneImg,
-    description: 'Produtos de limpeza e cuidados',
-    slug: 'higiene',
-  },
-  {
-    name: 'Vestuário',
-    image: vestuarioImg,
-    description: 'Roupas e acessórios para trabalho',
-    slug: 'vestuario',
-  },
-  {
-    name: 'Calçados',
-    image: calcadosImg,
-    description: 'Botas e sapatos de qualidade',
-    slug: 'calcados',
-  },
-];
-
+const featuredCategories = [{
+  name: 'Diversos',
+  image: diversosImg,
+  description: 'Acessórios e itens variados',
+  slug: 'diversos'
+}, {
+  name: 'Higiene',
+  image: higieneImg,
+  description: 'Produtos de limpeza e cuidados',
+  slug: 'higiene'
+}, {
+  name: 'Vestuário',
+  image: vestuarioImg,
+  description: 'Roupas e acessórios para trabalho',
+  slug: 'vestuario'
+}, {
+  name: 'Calçados',
+  image: calcadosImg,
+  description: 'Botas e sapatos de qualidade',
+  slug: 'calcados'
+}];
 export function FeaturedCategories() {
-  return (
-    <section className="py-12 md:py-16">
+  return <section className="py-12 md:py-16">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-            Explore Nossas Categorias
-          </h2>
-          <p className="text-muted-foreground">
-            Encontre tudo que você precisa organizado por categorias
-          </p>
-        </div>
+        
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {featuredCategories.map((category) => (
-            <Link 
-              key={category.slug}
-              to={`/produtos?categoria=${category.slug}`}
-              className="group relative aspect-square rounded-2xl overflow-hidden"
-            >
-              <img 
-                src={category.image}
-                alt={category.name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
+          {featuredCategories.map(category => <Link key={category.slug} to={`/produtos?categoria=${category.slug}`} className="group relative aspect-square rounded-2xl overflow-hidden">
+              <img src={category.image} alt={category.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/40 to-transparent" />
               
               <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 text-card">
@@ -69,10 +45,8 @@ export function FeaturedCategories() {
                   <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
                 </span>
               </div>
-            </Link>
-          ))}
+            </Link>)}
         </div>
       </div>
-    </section>
-  );
+    </section>;
 }

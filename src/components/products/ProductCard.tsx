@@ -7,6 +7,7 @@ import { Product } from '@/types';
 import { useCart } from '@/contexts/CartContext';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
+import { ProductImageCarousel } from './ProductImageCarousel';
 
 interface ProductCardProps {
   product: Product;
@@ -37,22 +38,28 @@ export function ProductCard({ product }: ProductCardProps) {
     addToCart(product);
   };
 
+  // Combine main image with additional images for carousel
+  const allImages = [
+    product.image_url,
+    ...(product.images || [])
+  ].filter((img): img is string => !!img && img.trim() !== '');
+
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 bg-transparent border-0 shadow-none">
       <Link to={`/produto/${product.id}`}>
-        <div className="relative aspect-square overflow-hidden bg-muted">
-          <img
-            src={product.image_url || '/placeholder.svg'}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        <div className="relative">
+          <ProductImageCarousel 
+            images={allImages.length > 0 ? allImages : ['/placeholder.svg']} 
+            productName={product.name}
+            className="group-hover:scale-[1.02] transition-transform duration-300"
           />
           {hasDiscount && (
-            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">
+            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground z-10">
               -{discountPercent}%
             </Badge>
           )}
           {product.featured && (
-            <Badge className="absolute top-2 right-2 bg-secondary text-secondary-foreground">
+            <Badge className="absolute top-2 right-2 bg-secondary text-secondary-foreground z-10">
               Destaque
             </Badge>
           )}

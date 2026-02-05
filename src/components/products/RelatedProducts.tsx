@@ -18,7 +18,7 @@ export function RelatedProducts({ productId, categoryId }: RelatedProductsProps)
         .neq('id', productId)
         .gt('price', 0)
         .lte('price', 500)
-        .limit(4);
+        .limit(12);
 
       if (categoryId) {
         query = query.eq('category_id', categoryId);
@@ -28,7 +28,7 @@ export function RelatedProducts({ productId, categoryId }: RelatedProductsProps)
       if (error) throw error;
       
       // If not enough products from same category, fetch more
-      if (data.length < 4) {
+      if (data.length < 12) {
         const { data: moreProducts } = await supabase
           .from('products')
           .select('*, category:categories(*)')
@@ -36,12 +36,12 @@ export function RelatedProducts({ productId, categoryId }: RelatedProductsProps)
           .neq('id', productId)
           .gt('price', 0)
           .lte('price', 500)
-          .limit(4 - data.length);
+          .limit(12 - data.length);
         
         if (moreProducts) {
           const existingIds = new Set(data.map(p => p.id));
           const uniqueMore = moreProducts.filter(p => !existingIds.has(p.id));
-          return [...data, ...uniqueMore].slice(0, 4);
+          return [...data, ...uniqueMore].slice(0, 12);
         }
       }
       
@@ -56,7 +56,7 @@ export function RelatedProducts({ productId, categoryId }: RelatedProductsProps)
       <h2 className="text-xl font-bold text-foreground mb-6">
         Produtos Relacionados
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

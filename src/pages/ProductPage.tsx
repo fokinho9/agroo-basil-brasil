@@ -87,14 +87,14 @@ function ViewingNow() {
     }, 5000);
     return () => clearInterval(timer);
   }, []);
-  return <div className="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-primary">
+  return <div className="flex items-center gap-2 text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 rounded-lg bg-primary">
       <div className="flex -space-x-2">
-        <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center">
-          <Users className="h-3 w-3 text-primary" />
+        <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center">
+          <Users className="h-2.5 w-2.5 md:h-3 md:w-3 text-primary" />
         </div>
       </div>
       <span className="text-secondary-foreground font-medium">
-        {viewers} pessoas visualizando agora
+        {viewers} pessoas visualizando
       </span>
     </div>;
 }
@@ -226,13 +226,13 @@ export default function ProductPage() {
           </div>
 
           {/* Rating with better display */}
-          {reviews && reviews.length > 0 && <div className="flex items-center gap-3">
+          {reviews && reviews.length > 0 && <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map(star => <Star key={star} className={`h-5 w-5 ${star <= Math.round(averageRating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`} />)}
+                {[1, 2, 3, 4, 5].map(star => <Star key={star} className={`h-4 w-4 md:h-5 md:w-5 ${star <= Math.round(averageRating) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`} />)}
               </div>
-              <span className="text-sm font-medium">{averageRating.toFixed(1)}</span>
-              <span className="text-sm text-muted-foreground">
-                ({reviews.length} avaliações verificadas)
+              <span className="text-xs md:text-sm font-medium">{averageRating.toFixed(1)}</span>
+              <span className="text-xs md:text-sm text-muted-foreground">
+                ({reviews.length} avaliações)
               </span>
             </div>}
 
@@ -240,28 +240,28 @@ export default function ProductPage() {
           <ViewingNow />
 
           {/* Price Section with urgency */}
-          <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+          <div className="bg-muted/50 rounded-xl p-3 md:p-4 space-y-2 md:space-y-3">
             {hasDiscount && <UrgencyTimer />}
             
-            <div className="flex items-baseline gap-3">
-              {isPriceOnRequest ? <span className="text-2xl font-bold text-primary">
+            <div className="flex flex-wrap items-baseline gap-2 md:gap-3">
+              {isPriceOnRequest ? <span className="text-xl md:text-2xl font-bold text-primary">
                   Preço sob consulta
                 </span> : <>
-                  <span className="text-3xl md:text-4xl font-bold text-primary">
+                  <span className="text-2xl md:text-4xl font-bold text-primary">
                     {formatCurrency(product.price)}
                   </span>
-                  {hasDiscount && <span className="text-lg text-muted-foreground line-through">
+                  {hasDiscount && <span className="text-base md:text-lg text-muted-foreground line-through">
                       {formatCurrency(product.original_price!)}
                     </span>}
                 </>}
             </div>
             
             {!isPriceOnRequest && <div className="space-y-1">
-                <p className="text-sm text-success font-medium flex items-center gap-1">
-                  <Check className="h-4 w-4" />
+                <p className="text-xs md:text-sm text-success font-medium flex items-center gap-1">
+                  <Check className="h-3 w-3 md:h-4 md:w-4" />
                   12x de {formatCurrency(product.price / 12)} sem juros
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs md:text-sm text-muted-foreground">
                   ou <span className="font-medium text-foreground">{formatCurrency(product.price * 0.95)}</span> à vista no PIX (5% off)
                 </p>
               </div>}
@@ -286,50 +286,50 @@ export default function ProductPage() {
 
           {/* Quantity and Add to Cart */}
           {!isHighValue && <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center border-2 border-border rounded-xl overflow-hidden">
-                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-3 hover:bg-muted transition-colors">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="flex items-center border-2 border-border rounded-xl overflow-hidden flex-shrink-0">
+                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-2 md:p-3 hover:bg-muted transition-colors">
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="w-10 text-center font-bold text-lg">{quantity}</span>
-                  <button onClick={() => setQuantity(q => q + 1)} className="p-3 hover:bg-muted transition-colors">
+                  <span className="w-8 md:w-10 text-center font-bold text-base md:text-lg">{quantity}</span>
+                  <button onClick={() => setQuantity(q => q + 1)} className="p-2 md:p-3 hover:bg-muted transition-colors">
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
-                <Button size="lg" className="flex-1 gap-2 h-12 text-sm md:text-base font-bold bg-success hover:bg-success/90 text-white" onClick={handleAddToCart} disabled={isAddingToCart}>
-                  <ShoppingCart className="h-5 w-5" />
-                  {isAddingToCart ? 'Adicionado!' : 'COMPRAR AGORA'}
+                <Button size="lg" className="flex-1 gap-2 h-11 md:h-12 text-xs md:text-base font-bold bg-success hover:bg-success/90 text-white min-w-0" onClick={handleAddToCart} disabled={isAddingToCart}>
+                  <ShoppingCart className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+                  <span className="truncate">{isAddingToCart ? 'Adicionado!' : 'COMPRAR AGORA'}</span>
                 </Button>
               </div>
             </div>}
 
-          {isHighValue && <Button size="lg" className="w-full gap-2 h-14 text-base font-bold" onClick={handleWhatsApp}>
-              <MessageCircle className="h-5 w-5" />
-              SOLICITAR ORÇAMENTO VIA WHATSAPP
+          {isHighValue && <Button size="lg" className="w-full gap-2 h-12 md:h-14 text-sm md:text-base font-bold" onClick={handleWhatsApp}>
+              <MessageCircle className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="truncate">SOLICITAR ORÇAMENTO VIA WHATSAPP</span>
             </Button>}
 
           {/* Trust Badges - More prominent */}
-          <div className="grid grid-cols-3 gap-2 pt-4">
-            <div className="flex flex-col items-center text-center p-3 bg-muted/50 rounded-xl border border-border">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                <Truck className="h-5 w-5 text-primary" />
+          <div className="grid grid-cols-3 gap-1.5 md:gap-2 pt-4">
+            <div className="flex flex-col items-center text-center p-2 md:p-3 bg-muted/50 rounded-lg md:rounded-xl border border-border">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1.5 md:mb-2">
+                <Truck className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
-              <span className="text-xs font-medium">Frete Rápido</span>
-              <span className="text-[10px] text-muted-foreground">Todo Brasil</span>
+              <span className="text-[10px] md:text-xs font-medium leading-tight">Frete Rápido</span>
+              <span className="text-[9px] md:text-[10px] text-muted-foreground hidden sm:block">Todo Brasil</span>
             </div>
-            <div className="flex flex-col items-center text-center p-3 bg-muted/50 rounded-xl border border-border">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                <Shield className="h-5 w-5 text-primary" />
+            <div className="flex flex-col items-center text-center p-2 md:p-3 bg-muted/50 rounded-lg md:rounded-xl border border-border">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1.5 md:mb-2">
+                <Shield className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
-              <span className="text-xs font-medium">Compra Segura</span>
-              <span className="text-[10px] text-muted-foreground">100% Protegido</span>
+              <span className="text-[10px] md:text-xs font-medium leading-tight">Compra Segura</span>
+              <span className="text-[9px] md:text-[10px] text-muted-foreground hidden sm:block">100% Protegido</span>
             </div>
-            <div className="flex flex-col items-center text-center p-3 bg-muted/50 rounded-xl border border-border">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                <CreditCard className="h-5 w-5 text-primary" />
+            <div className="flex flex-col items-center text-center p-2 md:p-3 bg-muted/50 rounded-lg md:rounded-xl border border-border">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1.5 md:mb-2">
+                <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
-              <span className="text-xs font-medium">12x Sem Juros</span>
-              <span className="text-[10px] text-muted-foreground">Cartão de crédito</span>
+              <span className="text-[10px] md:text-xs font-medium leading-tight">12x Sem Juros</span>
+              <span className="text-[9px] md:text-[10px] text-muted-foreground hidden sm:block">Cartão de crédito</span>
             </div>
           </div>
         </div>

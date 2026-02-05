@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CartProvider } from "@/contexts/CartContext";
+import { FloatingButtonProvider } from "@/contexts/FloatingButtonContext";
 import { Layout } from "@/components/layout/Layout";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
@@ -33,43 +34,46 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CartProvider>
-        <Toaster />
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<Layout><HomePage /></Layout>} />
-            <Route path="/produtos" element={<Layout><ProductsPage /></Layout>} />
-            <Route path="/categoria/:slug" element={<Layout><ProductsPage /></Layout>} />
-            <Route path="/busca" element={<Layout><ProductsPage /></Layout>} />
-            <Route path="/produto/:id" element={<Layout><ProductPage /></Layout>} />
-            <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
-            <Route path="/sobre" element={<Layout><AboutPage /></Layout>} />
-            <Route path="/contato" element={<Layout><ContactPage /></Layout>} />
-            <Route path="/termos" element={<Layout><TermsPage /></Layout>} />
-            <Route path="/privacidade" element={<Layout><PrivacyPage /></Layout>} />
-            <Route path="/trocas" element={<Layout><ReturnsPage /></Layout>} />
-            <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
-            
-            {/* Admin routes - hidden from public */}
-            <Route path="/fokinho" element={<AdminLoginPage />} />
-            <Route path="/fokinho/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/fokinho/produtos" element={<AdminProductsPage />} />
-            <Route path="/fokinho/categorias" element={<AdminCategoriesPage />} />
-            <Route path="/fokinho/pedidos" element={<AdminOrdersPage />} />
-            <Route path="/fokinho/banners" element={<AdminBannersPage />} />
-            <Route path="/fokinho/configuracoes" element={<AdminSettingsPage />} />
-            <Route path="/fokinho/importar" element={<AdminImportPage />} />
-            
-            {/* Keep old admin routes redirecting */}
-            <Route path="/admin" element={<AdminLoginPage />} />
-            <Route path="/admin/*" element={<AdminLoginPage />} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <FloatingButtonProvider>
+          <Toaster />
+          <BrowserRouter>
+            <ScrollToTop />
+            <Routes>
+              <Route path="/" element={<Layout><HomePage /></Layout>} />
+              <Route path="/produtos" element={<Layout><ProductsPage /></Layout>} />
+              <Route path="/categoria/:slug" element={<Layout><ProductsPage /></Layout>} />
+              <Route path="/busca" element={<Layout><ProductsPage /></Layout>} />
+              <Route path="/produto/:id" element={<Layout><ProductPage /></Layout>} />
+              <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+              <Route path="/sobre" element={<Layout><AboutPage /></Layout>} />
+              <Route path="/contato" element={<Layout><ContactPage /></Layout>} />
+              <Route path="/termos" element={<Layout><TermsPage /></Layout>} />
+              <Route path="/privacidade" element={<Layout><PrivacyPage /></Layout>} />
+              <Route path="/trocas" element={<Layout><ReturnsPage /></Layout>} />
+              <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
+              
+              {/* Admin routes - hidden from public */}
+              <Route path="/fokinho" element={<AdminLoginPage />} />
+              <Route path="/fokinho/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/fokinho/produtos" element={<AdminProductsPage />} />
+              <Route path="/fokinho/categorias" element={<AdminCategoriesPage />} />
+              <Route path="/fokinho/pedidos" element={<AdminOrdersPage />} />
+              <Route path="/fokinho/banners" element={<AdminBannersPage />} />
+              <Route path="/fokinho/configuracoes" element={<AdminSettingsPage />} />
+              <Route path="/fokinho/importar" element={<AdminImportPage />} />
+              
+              {/* Keep old admin routes redirecting */}
+              <Route path="/admin" element={<AdminLoginPage />} />
+              <Route path="/admin/*" element={<AdminLoginPage />} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </FloatingButtonProvider>
       </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
 
 export default App;
+

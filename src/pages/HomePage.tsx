@@ -9,7 +9,7 @@ import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 
 import { ContactCTA } from '@/components/home/ContactCTA';
 import { ImageBanners } from '@/components/home/ImageBanners';
-import { TrustBadges } from '@/components/home/TrustBadges';
+
 import { AllProducts } from '@/components/home/AllProducts';
 import { Truck, Shield, Headphones, CreditCard, Leaf, Award, Package, Timer } from 'lucide-react';
 
@@ -64,9 +64,6 @@ export default function HomePage() {
     <div>
       {/* Hero Banner */}
       <HeroBanner />
-      
-      {/* Trust Badges */}
-      <TrustBadges />
 
       {/* Benefits Bar */}
       <section className="bg-card border-y border-border">

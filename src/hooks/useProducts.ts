@@ -119,6 +119,27 @@ export function useLatestProducts(limit: number = 12) {
   });
 }
 
+export function useShirtProducts(limit: number = 8) {
+  return useQuery({
+    queryKey: ['products', 'shirts', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*)
+        `)
+        .eq('active', true)
+        .ilike('name', '%camisa%')
+        .order('created_at', { ascending: false })
+        .limit(limit * 2);
+
+      if (error) throw error;
+      return filterDirectPurchase(data as Product[]).slice(0, limit);
+    },
+  });
+}
+
 export function useDirectPurchaseProducts(limit: number = 20) {
   return useQuery({
     queryKey: ['products', 'direct-purchase', limit],

@@ -61,7 +61,7 @@ export function FloatingBuyButton({
         ) : (
           <Button 
             size="lg" 
-            className="gap-2 whitespace-nowrap"
+            className="gap-2 whitespace-nowrap bg-success hover:bg-success/90 text-white"
             onClick={onAddToCart}
           >
             <ShoppingCart className="h-5 w-5" />

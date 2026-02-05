@@ -431,11 +431,16 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Payment Method Selection - only show if NOT high value */}
-          {paymentStatus !== 'paid' && !isHighValue && (
+          {/* Payment Method Selection */}
+          {paymentStatus !== 'paid' && (
             <Card className="border-0 shadow-lg mb-4">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Forma de Pagamento</CardTitle>
+                {isHighValue && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Valor acima de R$500 - escolha cartão ou finalize via WhatsApp
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 <RadioGroup
@@ -443,16 +448,18 @@ export default function CheckoutPage() {
                   onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
                   className="flex flex-col gap-3"
                 >
-                  {/* PIX */}
-                  <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
-                    <RadioGroupItem value="pix" id="pix" />
-                    <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
-                      <Banknote className="h-5 w-5 text-primary" />
-                      <span>PIX</span>
-                    </Label>
-                  </div>
+                  {/* PIX - only show if total <= 500 */}
+                  {!isHighValue && (
+                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+                      <RadioGroupItem value="pix" id="pix" />
+                      <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Banknote className="h-5 w-5 text-primary" />
+                        <span>PIX</span>
+                      </Label>
+                    </div>
+                  )}
                   
-                  {/* Card */}
+                  {/* Card - always show */}
                   <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
                     <RadioGroupItem value="card" id="card" />
                     <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
@@ -460,6 +467,17 @@ export default function CheckoutPage() {
                       <span>Cartão de Crédito</span>
                     </Label>
                   </div>
+
+                  {/* WhatsApp - only show for high value orders */}
+                  {isHighValue && (
+                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'whatsapp' ? 'border-success bg-success/5' : 'border-muted'}`}>
+                      <RadioGroupItem value="whatsapp" id="whatsapp" />
+                      <Label htmlFor="whatsapp" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <MessageCircle className="h-5 w-5 text-success" />
+                        <span>Finalizar via WhatsApp</span>
+                      </Label>
+                    </div>
+                  )}
                 </RadioGroup>
               </CardContent>
             </Card>
@@ -481,7 +499,7 @@ export default function CheckoutPage() {
                       : 'Aguarde a confirmação do pagamento'}
                   </p>
                 </>
-              ) : isHighValue ? (
+              ) : paymentMethod === 'whatsapp' ? (
                 <>
                   <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
                     <MessageCircle className="h-10 w-10 text-success" />
@@ -565,7 +583,7 @@ export default function CheckoutPage() {
                 </>
               )}
 
-              {paymentStatus !== 'paid' && paymentMethod === 'card' && !isHighValue && (
+              {paymentStatus !== 'paid' && paymentMethod === 'card' && (
                 <>
                   <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-6 text-center">
                     <p className="text-sm text-muted-foreground mb-1">Valor total</p>
@@ -642,8 +660,8 @@ export default function CheckoutPage() {
                 </>
               )}
 
-              {/* WhatsApp Option - show for high value orders or when whatsapp method is selected */}
-              {paymentStatus !== 'paid' && (isHighValue || paymentMethod === 'whatsapp') && (
+              {/* WhatsApp Option - show when whatsapp method is selected */}
+              {paymentStatus !== 'paid' && paymentMethod === 'whatsapp' && (
                 <>
                   <div className="bg-success/5 rounded-xl p-6 text-center">
                     <p className="text-sm text-muted-foreground mb-1">Valor total do orçamento</p>

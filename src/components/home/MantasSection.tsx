@@ -35,11 +35,21 @@ function useMantasProducts(limit: number = 8) {
         .eq('category_id', category.id)
         .gt('price', 0)
         .lte('price', 500)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit * 2);
 
       if (error) throw error;
-      return data as Product[];
+      
+      // Sort to put "Air Pad Max" products first
+      const sorted = (data as Product[]).sort((a, b) => {
+        const aIsAirPadMax = a.name.toLowerCase().includes('air pad max');
+        const bIsAirPadMax = b.name.toLowerCase().includes('air pad max');
+        
+        if (aIsAirPadMax && !bIsAirPadMax) return -1;
+        if (!aIsAirPadMax && bIsAirPadMax) return 1;
+        return 0;
+      });
+      
+      return sorted.slice(0, limit);
     },
   });
 }

@@ -6,11 +6,11 @@ import { LatestProducts } from '@/components/home/LatestProducts';
 import { FeaturedCategories } from '@/components/home/FeaturedCategories';
 import { CTABanner } from '@/components/home/CTABanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
-
 import { ContactCTA } from '@/components/home/ContactCTA';
 import { ImageBanners } from '@/components/home/ImageBanners';
-
 import { AllProducts } from '@/components/home/AllProducts';
+import { PremiumProducts } from '@/components/home/PremiumProducts';
+import { ProductStoreSection } from '@/components/products/ProductStoreSection';
 import { Truck, Shield, Headphones, CreditCard, Leaf, Award, Package, Timer } from 'lucide-react';
 
 const benefits = [
@@ -87,6 +87,9 @@ export default function HomePage() {
       {/* Image Banners */}
       <ImageBanners />
 
+      {/* Premium Products - 8 most expensive */}
+      <PremiumProducts />
+
       {/* Category Section */}
       <CategorySection />
 
@@ -127,6 +130,11 @@ export default function HomePage() {
 
       {/* Testimonials */}
       <TestimonialsSection />
+
+      {/* Store Section with Instagram */}
+      <div className="container mx-auto px-4">
+        <ProductStoreSection />
+      </div>
 
       {/* Contact CTA */}
       <ContactCTA />

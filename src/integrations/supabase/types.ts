@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_carts: {
+        Row: {
+          cart_items: Json
+          cart_total: number
+          contacted_at: string | null
+          created_at: string
+          customer_address: string | null
+          customer_cep: string | null
+          customer_city: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          customer_state: string | null
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cart_items: Json
+          cart_total: number
+          contacted_at?: string | null
+          created_at?: string
+          customer_address?: string | null
+          customer_cep?: string | null
+          customer_city?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_state?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cart_items?: Json
+          cart_total?: number
+          contacted_at?: string | null
+          created_at?: string
+          customer_address?: string | null
+          customer_cep?: string | null
+          customer_city?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_state?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       banners: {
         Row: {
           active: boolean | null

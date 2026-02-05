@@ -27,6 +27,7 @@ import AdminOrdersPage from "@/pages/admin/AdminOrdersPage";
 import AdminBannersPage from "@/pages/admin/AdminBannersPage";
 import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
 import AdminImportPage from "@/pages/admin/AdminImportPage";
+import AdminAbandonedCartsPage from "@/pages/admin/AdminAbandonedCartsPage";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/fokinho/produtos" element={<AdminProductsPage />} />
               <Route path="/fokinho/categorias" element={<AdminCategoriesPage />} />
               <Route path="/fokinho/pedidos" element={<AdminOrdersPage />} />
+              <Route path="/fokinho/carrinhos" element={<AdminAbandonedCartsPage />} />
               <Route path="/fokinho/banners" element={<AdminBannersPage />} />
               <Route path="/fokinho/configuracoes" element={<AdminSettingsPage />} />
               <Route path="/fokinho/importar" element={<AdminImportPage />} />

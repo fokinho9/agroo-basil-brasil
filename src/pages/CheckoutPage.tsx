@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/contexts/CartContext';
 import { useCreateOrder, useUpdateOrder } from '@/hooks/useOrders';
+import { useCreateAbandonedCart } from '@/hooks/useAbandonedCarts';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,6 +92,7 @@ export default function CheckoutPage() {
   const { data: settings } = useSiteSettings();
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
+  const createAbandonedCart = useCreateAbandonedCart();
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
@@ -100,6 +102,7 @@ export default function CheckoutPage() {
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  const [abandonedCartSaved, setAbandonedCartSaved] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -159,6 +162,43 @@ export default function CheckoutPage() {
 
     return () => clearInterval(interval);
   }, [currentStep, transactionId, orderId, paymentStatus, clearCart, paymentMethod]);
+
+  // Save abandoned cart when user leaves checkout with data filled
+  useEffect(() => {
+    const saveAbandonedCart = () => {
+      // Only save if we have items and some customer data, and haven't saved yet
+      if (items.length === 0 || abandonedCartSaved || currentStep === 'payment') return;
+      if (!formData.name && !formData.phone && !formData.email) return;
+
+      createAbandonedCart.mutate({
+        customer_name: formData.name || undefined,
+        customer_email: formData.email || undefined,
+        customer_phone: formData.phone || undefined,
+        customer_cep: formData.cep || undefined,
+        customer_address: formData.address 
+          ? `${formData.address}${formData.addressNumber ? ', ' + formData.addressNumber : ''}${formData.complement ? ' - ' + formData.complement : ''}`
+          : undefined,
+        customer_city: formData.city || undefined,
+        customer_state: formData.state || undefined,
+        cart_items: items,
+        cart_total: finalTotal,
+      });
+      setAbandonedCartSaved(true);
+    };
+
+    // Save on page unload (tab close, navigate away)
+    const handleBeforeUnload = () => {
+      saveAbandonedCart();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also save when component unmounts (navigating away)
+      saveAbandonedCart();
+    };
+  }, [items, formData, currentStep, abandonedCartSaved, finalTotal, createAbandonedCart]);
 
   // Auto-fill address from CEP
   const fetchAddressFromCEP = async (cep: string) => {

@@ -2,3 +2,9 @@ project_id = "wbcdhyjvwgmxmxpoebcw"
 
 [functions.firecrawl-scrape]
 verify_jwt = false
+
+[functions.streetpay-create-pix]
+verify_jwt = false
+
+[functions.streetpay-check-status]
+verify_jwt = false

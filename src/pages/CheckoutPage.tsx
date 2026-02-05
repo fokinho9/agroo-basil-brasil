@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote } from 'lucide-react';
+import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +13,10 @@ import { useCreateOrder, useUpdateOrder } from '@/hooks/useOrders';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 type CheckoutStep = 'cart' | 'customer' | 'payment';
-type PaymentMethod = 'pix' | 'card';
+type PaymentMethod = 'pix' | 'card' | 'whatsapp';
 
 const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
   { id: 'cart', label: 'Seus Dados', icon: User },
@@ -86,6 +87,7 @@ const formatPhone = (value: string): string => {
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCart();
+  const { data: settings } = useSiteSettings();
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
   
@@ -118,6 +120,10 @@ export default function CheckoutPage() {
   const total = getTotal();
   const shipping = total > 200 ? 0 : 25;
   const finalTotal = total + shipping;
+  const isHighValue = finalTotal > 500;
+
+  // Get store phone for WhatsApp
+  const storePhone = settings?.store?.phone?.replace(/\D/g, '') || '5565999999999';
 
   // Check payment status periodically (only for PIX)
   useEffect(() => {
@@ -362,6 +368,28 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleWhatsAppQuote = () => {
+    const productsList = items.map(item => 
+      `• ${item.product.name} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`
+    ).join('\n');
+
+    const deliveryAddress = formData.address 
+      ? `${formData.address}, ${formData.city} - ${formData.state}, CEP: ${formData.cep}`
+      : 'A combinar';
+
+    const message = `*🛒 ORÇAMENTO - PEDIDO*\n\n` +
+      `*Cliente:* ${formData.name}\n` +
+      `*Telefone:* ${formData.phone}\n` +
+      `${formData.email ? `*E-mail:* ${formData.email}\n` : ''}` +
+      `\n*📦 Produtos:*\n${productsList}\n\n` +
+      `*📍 Endereço de Entrega:*\n${deliveryAddress}\n\n` +
+      `*💰 Valor Total:* ${formatCurrency(finalTotal)}\n\n` +
+      `Gostaria de finalizar esse pedido com outra forma de pagamento.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${storePhone}?text=${encodedMessage}`, '_blank');
+  };
+
   const handleCopyPix = () => {
     navigator.clipboard.writeText(pixCode);
     setCopied(true);
@@ -398,20 +426,30 @@ export default function CheckoutPage() {
             <Card className="border-0 shadow-lg mb-4">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Forma de Pagamento</CardTitle>
+                {isHighValue && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Valor acima de R$500 - escolha cartão ou solicite orçamento via WhatsApp
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
-                  className="grid grid-cols-2 gap-4"
+                  className={`grid gap-4 ${isHighValue ? 'grid-cols-2' : 'grid-cols-2'}`}
                 >
-                  <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
-                    <RadioGroupItem value="pix" id="pix" />
-                    <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
-                      <Banknote className="h-5 w-5 text-primary" />
-                      <span>PIX</span>
-                    </Label>
-                  </div>
+                  {/* PIX - only show if total <= 500 */}
+                  {!isHighValue && (
+                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+                      <RadioGroupItem value="pix" id="pix" />
+                      <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Banknote className="h-5 w-5 text-primary" />
+                        <span>PIX</span>
+                      </Label>
+                    </div>
+                  )}
+                  
+                  {/* Card - always show */}
                   <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
                     <RadioGroupItem value="card" id="card" />
                     <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
@@ -419,6 +457,17 @@ export default function CheckoutPage() {
                       <span>Cartão</span>
                     </Label>
                   </div>
+
+                  {/* WhatsApp Quote - only show if total > 500 */}
+                  {isHighValue && (
+                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'whatsapp' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+                      <RadioGroupItem value="whatsapp" id="whatsapp" />
+                      <Label htmlFor="whatsapp" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <MessageCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-sm">Outra forma</span>
+                      </Label>
+                    </div>
+                  )}
                 </RadioGroup>
               </CardContent>
             </Card>
@@ -591,7 +640,35 @@ export default function CheckoutPage() {
                 </>
               )}
 
-              {(paymentStatus === 'paid' || paymentMethod === 'pix') && (
+              {/* WhatsApp Quote Option */}
+              {paymentStatus !== 'paid' && paymentMethod === 'whatsapp' && (
+                <>
+                  <div className="bg-gradient-to-r from-green-500/10 to-green-600/10 rounded-xl p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor total do orçamento</p>
+                    <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
+                  </div>
+
+                  <div className="bg-muted rounded-xl p-4">
+                    <h4 className="font-medium mb-3 text-sm">Ao clicar no botão:</h4>
+                    <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+                      <li>Você será redirecionado para o WhatsApp</li>
+                      <li>Seus dados e produtos serão enviados automaticamente</li>
+                      <li>Nossa equipe entrará em contato para combinar o pagamento</li>
+                    </ul>
+                  </div>
+
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700" 
+                    size="lg" 
+                    onClick={handleWhatsAppQuote}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Solicitar Orçamento via WhatsApp
+                  </Button>
+                </>
+              )}
+
+              {(paymentStatus === 'paid' || paymentMethod === 'pix') && paymentMethod !== 'whatsapp' && (
                 <Button 
                   className="w-full" 
                   size="lg" 

@@ -125,14 +125,24 @@ export function BulkImageEnhancer({ products, onUpdate }: BulkImageEnhancerProps
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (err: any) {
+        const errorMessage = err.message || 'Erro desconhecido';
+        
         setErrors(prev => [...prev, {
           productName: product.name,
-          error: err.message || 'Erro desconhecido',
+          error: errorMessage,
         }]);
 
+        // Handle specific errors
+        if (errorMessage.includes('402') || errorMessage.includes('Créditos insuficientes')) {
+          toast.error('Créditos insuficientes. Adicione créditos na sua conta Lovable para continuar.');
+          setIsEnhancing(false);
+          setCurrentProduct('');
+          return; // Stop processing - no credits
+        }
+
         // If rate limited, wait longer
-        if (err.message?.includes('429') || err.message?.includes('limite')) {
-          toast.error('Limite de requisições atingido. Aguardando...');
+        if (errorMessage.includes('429') || errorMessage.includes('Limite de requisições')) {
+          toast.warning('Limite de requisições atingido. Aguardando 30 segundos...');
           await new Promise(resolve => setTimeout(resolve, 30000));
         }
       }

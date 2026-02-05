@@ -18,8 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 type CheckoutStep = 'cart' | 'customer' | 'payment';
 
 const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
-  { id: 'cart', label: 'Carrinho', icon: Package },
-  { id: 'customer', label: 'Seus Dados', icon: User },
+  { id: 'cart', label: 'Seus Dados', icon: User },
+  { id: 'customer', label: 'Entrega', icon: Truck },
   { id: 'payment', label: 'Pagamento', icon: CreditCard },
 ];
 

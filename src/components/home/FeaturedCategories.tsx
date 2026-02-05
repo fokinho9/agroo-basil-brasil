@@ -1,31 +1,36 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Package, Sparkles, Shirt, Footprints } from 'lucide-react';
 
 // Import category images
 import diversosImg from '@/assets/categories/diversos.jpg';
 import higieneImg from '@/assets/categories/higiene.jpg';
 import vestuarioImg from '@/assets/categories/vestuario.jpg';
 import calcadosImg from '@/assets/categories/calcados.jpg';
+
 const featuredCategories = [{
-  name: 'Diversos',
+  name: 'Tralhas',
   image: diversosImg,
   description: 'Acessórios e itens variados',
-  slug: 'diversos'
+  slug: 'diversos',
+  icon: Package
 }, {
   name: 'Higiene',
   image: higieneImg,
   description: 'Produtos de limpeza e cuidados',
-  slug: 'higiene'
+  slug: 'higiene',
+  icon: Sparkles
 }, {
   name: 'Vestuário',
   image: vestuarioImg,
   description: 'Roupas e acessórios para trabalho',
-  slug: 'vestuario'
+  slug: 'vestuario',
+  icon: Shirt
 }, {
   name: 'Calçados',
   image: calcadosImg,
   description: 'Botas e sapatos de qualidade',
-  slug: 'calcados'
+  slug: 'calcados',
+  icon: Footprints
 }];
 export function FeaturedCategories() {
   return <section className="py-12 md:py-16">

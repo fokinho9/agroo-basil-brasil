@@ -268,10 +268,10 @@ export default function ProductPage() {
           </div>
 
           {/* Scarcity - Low Stock Warning */}
-          {!isPriceOnRequest && <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg border border-[#61436b]">
+          {!isPriceOnRequest && <div className="flex items-center gap-2 p-3 rounded-lg border border-[#61436b] bg-border">
               <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">
+                <p className="text-sm font-medium text-primary">
                   Restam apenas {fakeStock} unidades!
                 </p>
                 <Progress value={fakeStock / 15 * 100} className="h-1.5 mt-1 [&>div]:bg-[hsl(286,23%,33%)]" />

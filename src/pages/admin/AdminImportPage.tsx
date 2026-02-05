@@ -109,13 +109,21 @@ interface ProductRow {
 }
 
 // Detect CSV format based on headers
-type CSVFormat = 'protechorse' | 'simplescraper' | 'unknown';
+type CSVFormat = 'protechorse' | 'simplescraper-full' | 'simplescraper-simple' | 'unknown';
 
 function detectCSVFormat(headerLine: string): CSVFormat {
   const lowerHeader = headerLine.toLowerCase();
+  
+  // Check for SimpleScraper formats
   if (lowerHeader.includes('product-image-area') && lowerHeader.includes('product-title')) {
-    return 'simplescraper';
+    // Full format has product-title_link and product-price-new columns
+    if (lowerHeader.includes('product-title_link') && lowerHeader.includes('product-price-new')) {
+      return 'simplescraper-full';
+    }
+    // Simple format only has: product-image-area, product-title, text-dark, price-discount
+    return 'simplescraper-simple';
   }
+  
   if (lowerHeader.includes('sku') || lowerHeader.includes('imagem')) {
     return 'protechorse';
   }
@@ -164,8 +172,8 @@ function parseCSV(csvText: string): ProductRow[] {
     
     let product: ProductRow | null = null;
 
-    if (format === 'simplescraper') {
-      // SimpleScraper format:
+    if (format === 'simplescraper-full') {
+      // Full SimpleScraper format with 6 columns:
       // 0: product-image-area (image URL)
       // 1: product-title (name)
       // 2: product-title_link (source URL)
@@ -191,6 +199,26 @@ function parseCSV(csvText: string): ProductRow[] {
           price: currentPrice,
           brand,
           source_url: sourceUrl,
+        };
+      }
+    } else if (format === 'simplescraper-simple') {
+      // Simple SimpleScraper format with 4 columns:
+      // 0: product-image-area (image URL)
+      // 1: product-title (name)
+      // 2: text-dark (brand)
+      // 3: price-discount (price)
+      const imageUrl = values[0] || '';
+      const name = values[1] || '';
+      const brand = values[2] || '';
+      const price = parseBrazilianPrice(values[3] || '');
+
+      if (name) {
+        product = {
+          name: name.length > 100 ? name.substring(0, 97) + '...' : name,
+          image_url: imageUrl,
+          original_price: 0,
+          price: price,
+          brand,
         };
       }
     } else {

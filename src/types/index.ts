@@ -88,3 +88,20 @@ export interface Review {
   comment: string;
   created_at: string;
 }
+
+export interface AbandonedCart {
+  id: string;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  customer_cep: string | null;
+  customer_address: string | null;
+  customer_city: string | null;
+  customer_state: string | null;
+  cart_items: CartItem[];
+  cart_total: number;
+  status: string;
+  contacted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}

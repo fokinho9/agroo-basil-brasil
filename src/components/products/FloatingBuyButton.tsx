@@ -56,7 +56,7 @@ export function FloatingBuyButton({
             {price === 0 ? 'Sob consulta' : formatCurrency(price)}
           </p>
         </div>
-        {isHighValue ? (
+        {price === 0 ? (
           <Button 
             size="lg" 
             className="gap-2 whitespace-nowrap text-sm md:text-base px-4 md:px-6"

@@ -12,6 +12,7 @@ import {
   X,
   Tags,
   FileUp,
+  ShoppingBag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ const menuItems = [
   { icon: Package, label: 'Produtos', path: '/fokinho/produtos' },
   { icon: Tags, label: 'Categorias', path: '/fokinho/categorias' },
   { icon: ShoppingCart, label: 'Pedidos', path: '/fokinho/pedidos' },
+  { icon: ShoppingBag, label: 'Carrinhos', path: '/fokinho/carrinhos' },
   { icon: Image, label: 'Banners', path: '/fokinho/banners' },
   { icon: FileUp, label: 'Importar', path: '/fokinho/importar' },
   { icon: Settings, label: 'Configurações', path: '/fokinho/configuracoes' },

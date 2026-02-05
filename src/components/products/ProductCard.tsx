@@ -18,7 +18,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const { data: settings } = useSiteSettings();
 
   const isPriceOnRequest = product.price === 0;
-  const isHighValue = product.price > 500 || isPriceOnRequest;
   const hasDiscount = product.original_price && product.original_price > product.price && !isPriceOnRequest;
   const discountPercent = hasDiscount
     ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
@@ -89,7 +88,7 @@ export function ProductCard({ product }: ProductCardProps) {
               </div>
             )}
           </div>
-          {isHighValue ? (
+          {isPriceOnRequest ? (
             <Button
               variant="outline"
               size="sm"

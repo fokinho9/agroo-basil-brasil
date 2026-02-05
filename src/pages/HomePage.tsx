@@ -8,6 +8,7 @@ import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 import { ImageBanners } from '@/components/home/ImageBanners';
 import { AllProducts } from '@/components/home/AllProducts';
 import { PremiumProducts } from '@/components/home/PremiumProducts';
+import { MantasSection } from '@/components/home/MantasSection';
 import { ProductStoreSection } from '@/components/products/ProductStoreSection';
 import { Leaf, Award, Package, Timer } from 'lucide-react';
 
@@ -42,6 +43,9 @@ export default function HomePage() {
 
       {/* Featured Categories with Images - After Carousel */}
       <FeaturedCategories />
+
+      {/* Mantas Section - Terra e Grama */}
+      <MantasSection />
 
       {/* Featured Products - Mantas Boots Horse */}
       <FeaturedProducts />

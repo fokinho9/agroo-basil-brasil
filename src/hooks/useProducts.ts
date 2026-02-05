@@ -178,34 +178,18 @@ export function useAdminProducts() {
   return useQuery({
     queryKey: ['admin', 'products'],
     queryFn: async () => {
-      // Fetch all products using pagination to bypass 1000 row limit
-      const allProducts: Product[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      let hasMore = true;
+      // Fetch up to 5000 products using range to bypass default 1000 limit
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*)
+        `)
+        .order('created_at', { ascending: false })
+        .range(0, 4999);
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('products')
-          .select(`
-            *,
-            category:categories(*)
-          `)
-          .order('created_at', { ascending: false })
-          .range(from, from + pageSize - 1);
-
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          allProducts.push(...(data as Product[]));
-          from += pageSize;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      return allProducts;
+      if (error) throw error;
+      return data as Product[];
     },
   });
 }

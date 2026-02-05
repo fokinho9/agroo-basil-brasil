@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Menu, X } from 'lucide-react';
+import logoAgroBrasil from '@/assets/logo-agro-brasil.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSearchProducts } from '@/hooks/useProducts';
@@ -54,11 +55,12 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">A</span>
-            </div>
-            <span className="text-xl font-bold text-foreground hidden sm:block">AgroShop</span>
+          <Link to="/" className="flex items-center">
+            <img 
+              src={logoAgroBrasil} 
+              alt="Agro Brasil - Tradição e Força" 
+              className="h-12 sm:h-14 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}

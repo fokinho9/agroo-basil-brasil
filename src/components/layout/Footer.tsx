@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from 'lucide-react';
+import logoAgroBrasil from '@/assets/logo-agro-brasil.png';
 
 export function Footer() {
   return (
@@ -8,11 +9,12 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                <span className="text-secondary-foreground font-bold text-xl">A</span>
-              </div>
-              <span className="text-xl font-bold">AgroShop</span>
+            <div className="mb-4">
+              <img 
+                src={logoAgroBrasil} 
+                alt="Agro Brasil - Tradição e Força" 
+                className="h-14 w-auto brightness-0 invert"
+              />
             </div>
             <p className="text-primary-foreground/80 text-sm leading-relaxed">
               Os melhores produtos agrícolas você encontra aqui. Qualidade e confiança 

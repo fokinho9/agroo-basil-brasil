@@ -110,12 +110,12 @@ export default function CheckoutPage() {
 
   const handleNextStep = () => {
     if (currentStep === 'cart') {
-      setCurrentStep('customer');
-    } else if (currentStep === 'customer') {
       if (!formData.name || !formData.phone) {
         toast.error('Preencha nome e telefone');
         return;
       }
+      setCurrentStep('customer');
+    } else if (currentStep === 'customer') {
       handleCreateOrder();
     }
   };
@@ -332,7 +332,7 @@ export default function CheckoutPage() {
           <div className="lg:col-span-2 space-y-6">
             {currentStep === 'cart' && (
               <>
-                {/* Cart Items */}
+                {/* Cart Items - Order Summary */}
                 <Card className="border-0 shadow-lg">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -364,48 +364,55 @@ export default function CheckoutPage() {
                   </CardContent>
                 </Card>
 
-                {/* Upsell Section */}
-                {upsellProducts && upsellProducts.length > 0 && (
-                  <Card className="border-0 shadow-lg bg-gradient-to-r from-secondary/10 to-primary/5">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Gift className="h-5 w-5 text-secondary" />
-                        Aproveite as ofertas!
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">Produtos em promoção para você</p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-3">
-                        {upsellProducts.slice(0, 4).map((product) => (
-                          <div key={product.id} className="bg-card rounded-lg p-3 flex flex-col">
-                            <img
-                              src={product.image_url || '/placeholder.svg'}
-                              alt={product.name}
-                              className="w-full aspect-square object-cover rounded-lg mb-2"
-                            />
-                            <p className="text-xs md:text-sm font-medium line-clamp-2 flex-1">{product.name}</p>
-                            <div className="mt-2">
-                              {product.original_price && (
-                                <p className="text-xs text-muted-foreground line-through">
-                                  {formatCurrency(product.original_price)}
-                                </p>
-                              )}
-                              <p className="text-sm font-bold text-primary">{formatCurrency(product.price)}</p>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="w-full mt-2 text-xs"
-                              onClick={() => handleAddUpsell(product)}
-                            >
-                              Adicionar
-                            </Button>
-                          </div>
-                        ))}
+                {/* Personal Data */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="h-5 w-5 text-primary" />
+                      Dados Pessoais
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="name">Nome completo *</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="Seu nome completo"
+                          className="mt-1"
+                        />
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      <div>
+                        <Label htmlFor="email">E-mail</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          placeholder="seu@email.com"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">WhatsApp *</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="(00) 00000-0000"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </>
             )}
 
@@ -413,52 +420,11 @@ export default function CheckoutPage() {
               <Card className="border-0 shadow-lg">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <User className="h-5 w-5 text-primary" />
-                    Seus Dados
+                    <Truck className="h-5 w-5 text-primary" />
+                    Dados de Entrega
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <Label htmlFor="name">Nome completo *</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="Seu nome completo"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">E-mail</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="seu@email.com"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">WhatsApp *</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="(00) 00000-0000"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <Separator />
-
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="cep">CEP</Label>

@@ -109,18 +109,22 @@ interface ProductRow {
 }
 
 // Detect CSV format based on headers
-type CSVFormat = 'protechorse' | 'simplescraper-full' | 'simplescraper-simple' | 'unknown';
+type CSVFormat = 'protechorse' | 'simplescraper-extended' | 'simplescraper-full' | 'simplescraper-simple' | 'unknown';
 
 function detectCSVFormat(headerLine: string): CSVFormat {
   const lowerHeader = headerLine.toLowerCase();
   
   // Check for SimpleScraper formats
   if (lowerHeader.includes('product-image-area') && lowerHeader.includes('product-title')) {
-    // Full format has product-title_link and product-price-new columns
+    // Extended format has label-custom, product-price-old, btn-primary columns (18+ columns)
+    if (lowerHeader.includes('label-custom') && lowerHeader.includes('product-price-old')) {
+      return 'simplescraper-extended';
+    }
+    // Full format has product-title_link and product-price-new columns (6 columns)
     if (lowerHeader.includes('product-title_link') && lowerHeader.includes('product-price-new')) {
       return 'simplescraper-full';
     }
-    // Simple format only has: product-image-area, product-title, text-dark, price-discount
+    // Simple format only has: product-image-area, product-title, text-dark, price-discount (4 columns)
     return 'simplescraper-simple';
   }
   
@@ -172,7 +176,39 @@ function parseCSV(csvText: string): ProductRow[] {
     
     let product: ProductRow | null = null;
 
-    if (format === 'simplescraper-full') {
+    if (format === 'simplescraper-extended') {
+      // Extended SimpleScraper format with 18 columns:
+      // 0: product-image-area (image URL)
+      // 1: label-custom (e.g., "Frete grátis")
+      // 2: product-title (name)
+      // 3: product-title_link (source URL)
+      // 4: text-dark (brand)
+      // 5: price-discount (à vista/Pix price - current price)
+      // 13: product-price-old (original price)
+      // 15: product-price-new (installment total price)
+      const imageUrl = values[0] || '';
+      const name = values[2] || '';
+      const sourceUrl = values[3] || '';
+      const brand = values[4] || '';
+      const pixPrice = parseBrazilianPrice(values[5] || '');
+      const oldPrice = parseBrazilianPrice(values[13] || '');
+      const newPrice = parseBrazilianPrice(values[15] || '');
+      
+      // Use Pix price as current (best price), old price as original
+      const currentPrice = pixPrice || newPrice;
+      const originalPrice = oldPrice > currentPrice ? oldPrice : 0;
+
+      if (name) {
+        product = {
+          name: name.length > 100 ? name.substring(0, 97) + '...' : name,
+          image_url: imageUrl,
+          original_price: originalPrice,
+          price: currentPrice,
+          brand,
+          source_url: sourceUrl,
+        };
+      }
+    } else if (format === 'simplescraper-full') {
       // Full SimpleScraper format with 6 columns:
       // 0: product-image-area (image URL)
       // 1: product-title (name)

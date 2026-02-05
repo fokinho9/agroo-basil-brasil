@@ -13,10 +13,10 @@ export function FeaturedProducts() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              Produtos em Destaque
+              Mantas Boots Horse
             </h2>
             <p className="text-muted-foreground mt-1">
-              Os mais vendidos da nossa loja
+              Qualidade e conforto para seu cavalo
             </p>
           </div>
           <Link to="/produtos">

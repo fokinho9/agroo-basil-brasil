@@ -41,20 +41,20 @@ export default function HomePage() {
       {/* Image Banners Carousel - Full Width */}
       <ImageBanners />
 
-      {/* Premium Products - 8 most expensive */}
-      <PremiumProducts />
+      {/* Featured Categories with Images - After Carousel */}
+      <FeaturedCategories />
 
       {/* Category Section */}
       <CategorySection />
 
-      {/* Featured Products */}
+      {/* Featured Products - Mantas Boots Horse */}
       <FeaturedProducts />
+
+      {/* Premium Products - 8 most expensive */}
+      <PremiumProducts />
 
       {/* Promotions with Discounts */}
       <PromotionSection />
-
-      {/* Featured Categories with Images */}
-      <FeaturedCategories />
 
       {/* Latest Products */}
       <LatestProducts />

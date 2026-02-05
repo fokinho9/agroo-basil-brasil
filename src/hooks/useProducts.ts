@@ -6,18 +6,24 @@ import { Product } from '@/types';
 const filterDirectPurchase = (products: Product[]) => 
   products.filter(p => p.price > 0 && p.price <= 500);
 
-export function useProducts(categorySlug?: string, searchTerm?: string) {
+const PRODUCTS_PER_PAGE = 24;
+
+export function useProducts(categorySlug?: string, searchTerm?: string, page: number = 1) {
   return useQuery({
-    queryKey: ['products', categorySlug, searchTerm],
+    queryKey: ['products', categorySlug, searchTerm, page],
     queryFn: async () => {
+      const from = (page - 1) * PRODUCTS_PER_PAGE;
+      const to = from + PRODUCTS_PER_PAGE - 1;
+
       let query = supabase
         .from('products')
         .select(`
           *,
           category:categories(*)
-        `)
+        `, { count: 'exact' })
         .eq('active', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (categorySlug) {
         const { data: category } = await supabase
@@ -35,12 +41,20 @@ export function useProducts(categorySlug?: string, searchTerm?: string) {
         query = query.ilike('name', `%${searchTerm}%`);
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data as Product[];
+      
+      return {
+        products: data as Product[],
+        totalCount: count || 0,
+        totalPages: Math.ceil((count || 0) / PRODUCTS_PER_PAGE),
+        currentPage: page,
+      };
     },
   });
 }
+
+export { PRODUCTS_PER_PAGE };
 
 export function useProduct(id: string) {
   return useQuery({

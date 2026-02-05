@@ -9,7 +9,8 @@ import { ArrowRight } from 'lucide-react';
 
 // Import banner images
 import mantasDesktop from '@/assets/banners/mantas-desktop.webp';
-import mantasPromo from '@/assets/banners/mantas-promo.png';
+import mantasPromoDesktop from '@/assets/banners/mantas-promo-desktop.png';
+import mantasPromoMobile from '@/assets/banners/mantas-promo-mobile.png';
 
 function useMantasProducts(limit: number = 8) {
   return useQuery({
@@ -64,10 +65,17 @@ export function MantasSection() {
       <div className="container mx-auto px-4 relative z-10">
         {/* Banner Promocional no Topo */}
         <Link to="/categoria/mantas" className="block mb-6">
+          {/* Desktop Banner */}
           <img 
-            src={mantasPromo} 
+            src={mantasPromoDesktop} 
+            alt="Mantas Boots Horse - Conforto e Proteção para seu Cavalo"
+            className="hidden md:block w-full max-w-2xl mx-auto h-auto rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]"
+          />
+          {/* Mobile Banner */}
+          <img 
+            src={mantasPromoMobile} 
             alt="Mantas Boots Horse - Leveza e Proteção para seu Cavalo"
-            className="w-full max-w-2xl mx-auto h-auto rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]"
+            className="md:hidden w-full max-w-sm mx-auto h-auto rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]"
           />
         </Link>
 

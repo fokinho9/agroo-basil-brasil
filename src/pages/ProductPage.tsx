@@ -87,7 +87,7 @@ function ViewingNow() {
     }, 5000);
     return () => clearInterval(timer);
   }, []);
-  return <div className="flex items-center gap-2 text-sm bg-secondary/20 px-3 py-2 rounded-lg">
+  return <div className="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-primary">
       <div className="flex -space-x-2">
         <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center">
           <Users className="h-3 w-3 text-primary" />

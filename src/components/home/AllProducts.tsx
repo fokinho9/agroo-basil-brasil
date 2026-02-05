@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/products/ProductCard';
-import { useProducts } from '@/hooks/useProducts';
+import { useDirectPurchaseProducts } from '@/hooks/useProducts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowRight } from 'lucide-react';
 
 export function AllProducts() {
-  const { data: products, isLoading } = useProducts();
+  const { data: products, isLoading } = useDirectPurchaseProducts(20);
 
   if (isLoading) {
     return (
@@ -26,8 +26,7 @@ export function AllProducts() {
     );
   }
 
-  // Show up to 20 products
-  const displayProducts = products?.slice(0, 20) || [];
+  const displayProducts = products || [];
 
   return (
     <section className="py-12 md:py-16 bg-muted/30">

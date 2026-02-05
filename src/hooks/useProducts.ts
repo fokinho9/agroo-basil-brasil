@@ -2,6 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types';
 
+// Helper to filter products that can be purchased directly (price > 0 and <= 500)
+const filterDirectPurchase = (products: Product[]) => 
+  products.filter(p => p.price > 0 && p.price <= 500);
+
 export function useProducts(categorySlug?: string, searchTerm?: string) {
   return useQuery({
     queryKey: ['products', categorySlug, searchTerm],
@@ -71,10 +75,11 @@ export function useFeaturedProducts() {
         .eq('active', true)
         .eq('featured', true)
         .order('created_at', { ascending: false })
-        .limit(8);
+        .limit(16);
 
       if (error) throw error;
-      return data as Product[];
+      // Filter to only show products with direct purchase (price > 0 and <= 500)
+      return filterDirectPurchase(data as Product[]).slice(0, 8);
     },
   });
 }
@@ -90,6 +95,29 @@ export function useLatestProducts(limit: number = 12) {
           category:categories(*)
         `)
         .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(limit * 2);
+
+      if (error) throw error;
+      // Filter to only show products with direct purchase (price > 0 and <= 500)
+      return filterDirectPurchase(data as Product[]).slice(0, limit);
+    },
+  });
+}
+
+export function useDirectPurchaseProducts(limit: number = 20) {
+  return useQuery({
+    queryKey: ['products', 'direct-purchase', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*)
+        `)
+        .eq('active', true)
+        .gt('price', 0)
+        .lte('price', 500)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -112,11 +140,13 @@ export function useDiscountedProducts(limit: number = 8) {
         .eq('active', true)
         .not('original_price', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit * 2);
 
       if (error) throw error;
-      // Filter to only products where original_price > price
-      return (data as Product[]).filter(p => p.original_price && p.original_price > p.price);
+      // Filter to only products where original_price > price AND can be purchased directly
+      return (data as Product[])
+        .filter(p => p.original_price && p.original_price > p.price && p.price > 0 && p.price <= 500)
+        .slice(0, limit);
     },
   });
 }

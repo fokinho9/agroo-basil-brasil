@@ -6,7 +6,7 @@ import { LatestProducts } from '@/components/home/LatestProducts';
 import { FeaturedCategories } from '@/components/home/FeaturedCategories';
 import { CTABanner } from '@/components/home/CTABanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
-import { BrandsSection } from '@/components/home/BrandsSection';
+
 import { ContactCTA } from '@/components/home/ContactCTA';
 import { ImageBanners } from '@/components/home/ImageBanners';
 import { TrustBadges } from '@/components/home/TrustBadges';
@@ -130,9 +130,6 @@ export default function HomePage() {
 
       {/* Testimonials */}
       <TestimonialsSection />
-
-      {/* Brands */}
-      <BrandsSection />
 
       {/* Contact CTA */}
       <ContactCTA />

@@ -83,61 +83,57 @@ export function ImageBanners() {
   };
 
   return (
-    <section className="py-4 md:py-8">
-      <div className="container mx-auto px-4">
-        <div className="relative overflow-hidden rounded-xl">
-          {/* Carousel Container */}
-          <div
-            className="flex transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+    <section className="relative w-full overflow-hidden group">
+      {/* Carousel Container - Full Width */}
+      <div
+        className="flex transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+      >
+        {banners.map((banner) => (
+          <Link
+            key={banner.id}
+            to={banner.link}
+            className="min-w-full relative"
           >
-            {banners.map((banner) => (
-              <Link
-                key={banner.id}
-                to={banner.link}
-                className="min-w-full relative group"
-              >
-                <img
-                  src={isMobile ? banner.mobileImage : banner.desktopImage}
-                  alt={banner.title}
-                  className="w-full h-auto object-cover aspect-[16/9] md:aspect-[3/1]"
-                />
-              </Link>
-            ))}
-          </div>
+            <img
+              src={isMobile ? banner.mobileImage : banner.desktopImage}
+              alt={banner.title}
+              className="w-full h-auto object-cover"
+            />
+          </Link>
+        ))}
+      </div>
 
-          {/* Navigation Arrows */}
-          <button
-            onClick={goToPrevious}
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card text-foreground rounded-full p-2 md:p-3 transition-all opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 shadow-lg"
-            aria-label="Banner anterior"
-          >
-            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
-          </button>
-          <button
-            onClick={goToNext}
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card text-foreground rounded-full p-2 md:p-3 transition-all opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 shadow-lg"
-            aria-label="Próximo banner"
-          >
-            <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
-          </button>
+      {/* Navigation Arrows */}
+      <button
+        onClick={goToPrevious}
+        className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card text-foreground rounded-full p-2 md:p-3 transition-all opacity-0 group-hover:opacity-100 shadow-lg z-10"
+        aria-label="Banner anterior"
+      >
+        <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
+      </button>
+      <button
+        onClick={goToNext}
+        className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card text-foreground rounded-full p-2 md:p-3 transition-all opacity-0 group-hover:opacity-100 shadow-lg z-10"
+        aria-label="Próximo banner"
+      >
+        <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
+      </button>
 
-          {/* Dots Navigation */}
-          <div className="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'bg-primary scale-110'
-                    : 'bg-card/70 hover:bg-card'
-                }`}
-                aria-label={`Ir para banner ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Dots Navigation */}
+      <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+        {banners.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => goToSlide(index)}
+            className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-all shadow ${
+              index === currentIndex
+                ? 'bg-primary scale-110'
+                : 'bg-card/70 hover:bg-card'
+            }`}
+            aria-label={`Ir para banner ${index + 1}`}
+          />
+        ))}
       </div>
     </section>
   );

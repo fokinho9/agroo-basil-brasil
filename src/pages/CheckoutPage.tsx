@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { CheckoutUpsell } from '@/components/checkout/CheckoutUpsell';
 
 type CheckoutStep = 'cart' | 'customer' | 'payment';
 type PaymentMethod = 'pix' | 'card' | 'whatsapp';
@@ -879,8 +880,11 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* Order Summary Sidebar */}
-          <div>
+          {/* Upsell + Order Summary Sidebar */}
+          <div className="space-y-4">
+            {/* Upsell - single product */}
+            <CheckoutUpsell />
+
             <Card className="sticky top-24 border-0 shadow-lg">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Resumo</CardTitle>

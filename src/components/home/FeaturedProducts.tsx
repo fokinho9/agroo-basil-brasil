@@ -13,9 +13,15 @@ export function FeaturedProducts() {
 
   return (
     <section className="py-12 md:py-16 relative overflow-hidden">
-      {/* Soft gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 via-primary/5 to-secondary/10" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-secondary/15 to-primary/10 animate-pulse" style={{ animationDuration: '4s' }} />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-warning/20 via-primary/10 to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-secondary/25 via-transparent to-transparent" />
+      
+      {/* Floating animated shapes */}
+      <div className="absolute top-10 left-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl animate-bounce" style={{ animationDuration: '6s' }} />
+      <div className="absolute bottom-10 right-10 w-48 h-48 bg-warning/15 rounded-full blur-3xl animate-bounce" style={{ animationDuration: '8s', animationDelay: '1s' }} />
+      <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-secondary/20 rounded-full blur-2xl animate-pulse" style={{ animationDuration: '5s' }} />
       
       <div className="container mx-auto px-4 relative z-10">
         {/* Banner Image */}

@@ -2,7 +2,7 @@ import { MessageCircle, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function ContactCTA() {
-  const whatsappNumber = '5565999999999';
+  const whatsappNumber = '5511972238165';
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Olá! Gostaria de mais informações sobre os produtos.`;
 
   return (
@@ -29,7 +29,7 @@ export function ContactCTA() {
             size="lg" 
             variant="outline"
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 gap-2"
-            onClick={() => window.location.href = 'tel:+5511999999999'}
+            onClick={() => window.location.href = 'tel:+5511972238165'}
           >
             <Phone className="h-5 w-5" />
             Ligar Agora

@@ -171,7 +171,7 @@ export default function ProductPage() {
   const fakeStock = Math.floor(Math.random() * 8) + 3;
   const handleWhatsApp = () => {
     const whatsappSettings = settings?.whatsapp || {
-      number: '5511999999999'
+      number: '5511972238165'
     };
     const message = isPriceOnRequest ? `Olá! Gostaria de saber o preço do produto: ${product.name}` : `Olá! Tenho interesse no produto: ${product.name} - ${formatCurrency(product.price)}`;
     window.open(createWhatsAppLink(whatsappSettings.number, message), '_blank');
@@ -365,6 +365,6 @@ export default function ProductPage() {
       <ProductStoreSection />
 
       {/* Floating Buy Button */}
-      <FloatingBuyButton productName={product.name} price={product.price} isHighValue={isHighValue} onAddToCart={handleAddToCart} whatsappNumber={settings?.whatsapp?.number || '5511999999999'} />
+      <FloatingBuyButton productName={product.name} price={product.price} isHighValue={isHighValue} onAddToCart={handleAddToCart} whatsappNumber={settings?.whatsapp?.number || '5511972238165'} />
     </div>;
 }

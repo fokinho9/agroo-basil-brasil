@@ -26,7 +26,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const handleWhatsApp = () => {
     const whatsappSettings = settings?.whatsapp || {
-      number: '5511999999999',
+      number: '5511972238165',
     };
     const message = `Olá! Tenho interesse no produto: ${product.name} - ${formatCurrency(product.price)}`;
     window.open(createWhatsAppLink(whatsappSettings.number, message), '_blank');

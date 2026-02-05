@@ -8,7 +8,7 @@ export function WhatsAppButton() {
   const { isFloatingBuyVisible } = useFloatingButton();
 
   const whatsappSettings = settings?.whatsapp || {
-    number: '5511999999999',
+    number: '5511972238165',
     message: 'Olá! Vim do site e gostaria de mais informações.',
   };
 

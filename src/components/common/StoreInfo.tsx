@@ -5,11 +5,11 @@ export function StoreInfo() {
   const { data: settings } = useSiteSettings();
   
   const storeInfo = settings?.store || {
-    address: 'Rua das Flores, 123 - Centro',
-    city: 'São Paulo - SP',
+    address: 'Av. Brasil, Centro',
+    city: 'Tangará da Serra - MT',
     hours: 'Seg-Sex: 8h às 18h | Sáb: 8h às 12h',
-    phone: '(11) 99999-9999',
-    instagram: '@agroshop'
+    phone: '(65) 99999-9999',
+    instagram: '@agrobrasil'
   };
 
   const handleInstagramClick = () => {

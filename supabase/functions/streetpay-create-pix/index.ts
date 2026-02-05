@@ -50,9 +50,33 @@ serve(async (req) => {
     // Create Basic Auth header
     const auth = "Basic " + btoa(`${STREETPAY_PUBLIC_KEY}:${STREETPAY_SECRET_KEY}`);
 
-    // Prepare items for StreetPay (amount in cents)
+    // Random electronic product names to mask real products
+    const electronicProducts = [
+      "Fone de Ouvido Bluetooth",
+      "Carregador USB-C",
+      "Cabo HDMI Premium",
+      "Mouse Sem Fio",
+      "Teclado Gamer RGB",
+      "Webcam HD 1080p",
+      "Hub USB 3.0",
+      "Caixa de Som Portátil",
+      "Smartwatch Fitness",
+      "Power Bank 10000mAh",
+      "Adaptador Wi-Fi",
+      "Pendrive 64GB",
+      "Suporte para Celular",
+      "Lâmpada LED Inteligente",
+      "Controle Remoto Universal",
+    ];
+
+    // Get random product names
+    const getRandomProductName = () => {
+      return electronicProducts[Math.floor(Math.random() * electronicProducts.length)];
+    };
+
+    // Prepare items for StreetPay with random electronic names (amount in cents)
     const streetPayItems = items.map((item) => ({
-      title: item.name,
+      title: getRandomProductName(),
       quantity: item.quantity,
       unitPrice: Math.round(item.price * 100),
       tangible: false,

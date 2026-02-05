@@ -2,7 +2,7 @@ import { MessageCircle, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function ContactCTA() {
-  const whatsappNumber = '5511999999999';
+  const whatsappNumber = '5565999999999';
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Olá! Gostaria de mais informações sobre os produtos.`;
 
   return (

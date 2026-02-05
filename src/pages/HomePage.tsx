@@ -5,7 +5,6 @@ import { LatestProducts } from '@/components/home/LatestProducts';
 import { FeaturedCategories } from '@/components/home/FeaturedCategories';
 import { CTABanner } from '@/components/home/CTABanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
-import { ContactCTA } from '@/components/home/ContactCTA';
 import { ImageBanners } from '@/components/home/ImageBanners';
 import { AllProducts } from '@/components/home/AllProducts';
 import { PremiumProducts } from '@/components/home/PremiumProducts';
@@ -89,9 +88,6 @@ export default function HomePage() {
       <div className="container mx-auto px-4">
         <ProductStoreSection />
       </div>
-
-      {/* Contact CTA */}
-      <ContactCTA />
     </div>
   );
 }

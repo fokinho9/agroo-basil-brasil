@@ -107,6 +107,8 @@ export default function CheckoutPage() {
     cpf: '',
     cep: '',
     address: '',
+    addressNumber: '',
+    complement: '',
     city: '',
     state: '',
   });
@@ -272,6 +274,7 @@ export default function CheckoutPage() {
         return;
       }
       setCurrentStep('customer');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (currentStep === 'customer') {
       handleCreateOrder();
     }
@@ -284,7 +287,9 @@ export default function CheckoutPage() {
           customer_name: formData.name,
           customer_email: formData.email || null,
           customer_phone: formData.phone,
-          customer_address: formData.address || null,
+          customer_address: formData.address 
+            ? `${formData.address}${formData.addressNumber ? ', ' + formData.addressNumber : ''}${formData.complement ? ' - ' + formData.complement : ''}`
+            : null,
           customer_city: formData.city || null,
           customer_state: formData.state || null,
           customer_cep: formData.cep || null,
@@ -308,6 +313,7 @@ export default function CheckoutPage() {
 
       setOrderId(order.id);
       setCurrentStep('payment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
       // Only create PIX for PIX payment method
       if (paymentMethod === 'pix') {
@@ -374,8 +380,11 @@ export default function CheckoutPage() {
       `• ${item.product.name} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`
     ).join('\n');
 
-    const deliveryAddress = formData.address 
-      ? `${formData.address}, ${formData.city} - ${formData.state}, CEP: ${formData.cep}`
+    const fullAddress = formData.address 
+      ? `${formData.address}${formData.addressNumber ? ', ' + formData.addressNumber : ''}${formData.complement ? ' - ' + formData.complement : ''}`
+      : '';
+    const deliveryAddress = fullAddress 
+      ? `${fullAddress}, ${formData.city} - ${formData.state}, CEP: ${formData.cep}`
       : 'A combinar';
 
     const message = `*🛒 ORÇAMENTO - PEDIDO*\n\n` +
@@ -437,7 +446,7 @@ export default function CheckoutPage() {
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
-                  className={`grid gap-4 ${isHighValue ? 'grid-cols-2' : 'grid-cols-2'}`}
+                  className="flex flex-col gap-3"
                 >
                   {/* PIX - only show if total <= 500 */}
                   {!isHighValue && (
@@ -455,7 +464,7 @@ export default function CheckoutPage() {
                     <RadioGroupItem value="card" id="card" />
                     <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
                       <CreditCard className="h-5 w-5 text-primary" />
-                      <span>Cartão</span>
+                      <span>Cartão de Crédito</span>
                     </Label>
                   </div>
 
@@ -465,7 +474,7 @@ export default function CheckoutPage() {
                       <RadioGroupItem value="whatsapp" id="whatsapp" />
                       <Label htmlFor="whatsapp" className="flex items-center gap-2 cursor-pointer flex-1">
                         <MessageCircle className="h-5 w-5 text-green-600" />
-                        <span className="text-sm">Outra forma</span>
+                        <span>Pagar de outra forma (WhatsApp)</span>
                       </Label>
                     </div>
                   )}
@@ -842,13 +851,35 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div className="sm:col-span-2">
-                      <Label htmlFor="address">Endereço</Label>
+                      <Label htmlFor="address">Endereço (Rua/Avenida)</Label>
                       <Input
                         id="address"
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
-                        placeholder="Rua, número, complemento"
+                        placeholder="Rua, Avenida..."
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="addressNumber">Número</Label>
+                      <Input
+                        id="addressNumber"
+                        name="addressNumber"
+                        value={formData.addressNumber}
+                        onChange={handleInputChange}
+                        placeholder="123"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="complement">Complemento</Label>
+                      <Input
+                        id="complement"
+                        name="complement"
+                        value={formData.complement}
+                        onChange={handleInputChange}
+                        placeholder="Apto, Bloco, Casa..."
                         className="mt-1"
                       />
                     </div>

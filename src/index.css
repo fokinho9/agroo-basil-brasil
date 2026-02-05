@@ -42,6 +42,9 @@
     --warning: 40 70% 50%;
     --warning-foreground: 25 20% 15%;
 
+    --urgency: 286 23% 33%;
+    --urgency-foreground: 0 0% 100%;
+
     --sidebar-background: 25 19% 27%;
     --sidebar-foreground: 25 15% 96%;
     --sidebar-primary: 30 80% 29%;

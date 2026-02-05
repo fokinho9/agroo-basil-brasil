@@ -274,7 +274,7 @@ export default function ProductPage() {
                 <p className="text-sm font-medium text-destructive">
                   Restam apenas {fakeStock} unidades!
                 </p>
-                <Progress value={fakeStock / 15 * 100} className="h-1.5 mt-1" />
+                <Progress value={fakeStock / 15 * 100} className="h-1.5 mt-1 [&>div]:bg-[hsl(286,23%,33%)]" />
               </div>
             </div>}
 

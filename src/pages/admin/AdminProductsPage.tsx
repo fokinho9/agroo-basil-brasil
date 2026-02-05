@@ -31,10 +31,11 @@ import {
 import { useAdminProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types';
-import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign, Images } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { ProductImagesForm } from '@/components/admin/ProductImagesForm';
 
 type ProductFilter = 'all' | 'no-image' | 'no-description' | 'no-price';
 
@@ -55,6 +56,7 @@ export default function AdminProductsPage() {
     price: '',
     original_price: '',
     image_url: '',
+    images: [] as string[],
     category_id: '',
     stock: '',
     active: true,
@@ -91,6 +93,7 @@ export default function AdminProductsPage() {
       price: '',
       original_price: '',
       image_url: '',
+      images: [],
       category_id: '',
       stock: '',
       active: true,
@@ -107,6 +110,7 @@ export default function AdminProductsPage() {
       price: product.price.toString(),
       original_price: product.original_price?.toString() || '',
       image_url: product.image_url || '',
+      images: product.images || [],
       category_id: product.category_id || '',
       stock: product.stock.toString(),
       active: product.active,
@@ -124,6 +128,7 @@ export default function AdminProductsPage() {
       price: parseFloat(formData.price),
       original_price: formData.original_price ? parseFloat(formData.original_price) : null,
       image_url: formData.image_url || null,
+      images: formData.images.length > 0 ? formData.images : null,
       category_id: formData.category_id || null,
       stock: parseInt(formData.stock) || 0,
       active: formData.active,
@@ -249,12 +254,11 @@ export default function AdminProductsPage() {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor="image_url">URL da Imagem</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                      placeholder="https://..."
+                    <ProductImagesForm
+                      images={formData.images}
+                      onChange={(images) => setFormData({ ...formData, images })}
+                      mainImageUrl={formData.image_url}
+                      onMainImageChange={(url) => setFormData({ ...formData, image_url: url })}
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -357,11 +361,18 @@ export default function AdminProductsPage() {
                       <TableRow key={product.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <img
-                              src={product.image_url || '/placeholder.svg'}
-                              alt={product.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
+                            <div className="relative">
+                              <img
+                                src={product.image_url || '/placeholder.svg'}
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                              {product.images && product.images.length > 0 && (
+                                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                  +{product.images.length}
+                                </span>
+                              )}
+                            </div>
                             <div>
                               <p className="font-medium">{product.name}</p>
                               {product.featured && (

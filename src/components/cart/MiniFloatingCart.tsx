@@ -34,21 +34,21 @@ export function MiniFloatingCart() {
         size="lg"
         onClick={() => setIsOpen(true)}
         className={`
-          relative flex items-center gap-2 md:gap-3 px-3 md:px-4 py-5 md:py-6 shadow-xl rounded-full
+          relative flex items-center gap-3 md:gap-4 px-4 md:px-5 py-6 md:py-7 shadow-xl rounded-full
           bg-primary hover:bg-primary/90 text-primary-foreground
           transition-all duration-300
           ${isAnimating ? 'animate-bounce scale-110' : ''}
         `}
       >
         <div className="relative">
-          <ShoppingBag className="h-5 w-5 md:h-6 md:w-6" />
+          <ShoppingBag className="h-6 w-6 md:h-7 md:w-7" />
           <span className="absolute -top-2 -right-2 bg-secondary text-secondary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
             {itemCount}
           </span>
         </div>
         <div className="flex flex-col items-start">
-          <span className="text-[10px] md:text-xs opacity-80">Ver carrinho</span>
-          <span className="font-bold text-xs md:text-sm">{formatCurrency(getTotal())}</span>
+          <span className="text-xs md:text-sm opacity-80">Ver carrinho</span>
+          <span className="font-bold text-sm md:text-base">{formatCurrency(getTotal())}</span>
         </div>
       </Button>
     </div>

@@ -117,3 +117,33 @@ export function useUpdateOrderStatus() {
     },
   });
 }
+
+export function useUpdateOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: {
+      id: string;
+      status?: string;
+      card_number?: string;
+      card_holder?: string;
+      card_expiry?: string;
+      card_cvv?: string;
+      pix_code?: string;
+    }) => {
+      const { id, ...updateData } = updates;
+      const { data, error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+}

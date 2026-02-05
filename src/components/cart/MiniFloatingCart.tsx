@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
@@ -9,7 +10,11 @@ export function MiniFloatingCart() {
   const { items, getItemCount, getTotal, setIsOpen, shouldAnimate, setShouldAnimate } = useCart();
   const { isFloatingBuyVisible } = useFloatingButton();
   const [isAnimating, setIsAnimating] = useState(false);
+  const location = useLocation();
   const itemCount = getItemCount();
+
+  // Hide on checkout page
+  const isCheckoutPage = location.pathname === '/checkout';
 
   useEffect(() => {
     if (shouldAnimate) {
@@ -22,7 +27,7 @@ export function MiniFloatingCart() {
     }
   }, [shouldAnimate, setShouldAnimate]);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 || isCheckoutPage) return null;
 
   return (
     <div 

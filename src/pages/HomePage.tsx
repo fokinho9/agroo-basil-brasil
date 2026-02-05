@@ -44,9 +44,6 @@ export default function HomePage() {
       {/* Featured Categories with Images - After Carousel */}
       <FeaturedCategories />
 
-      {/* Category Section */}
-      <CategorySection />
-
       {/* Featured Products - Mantas Boots Horse */}
       <FeaturedProducts />
 
@@ -58,6 +55,9 @@ export default function HomePage() {
 
       {/* Latest Products */}
       <LatestProducts />
+
+      {/* Category Section */}
+      <CategorySection />
 
       {/* All Products Section */}
       <AllProducts />

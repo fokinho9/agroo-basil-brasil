@@ -1,16 +1,19 @@
 import { MapPin, Instagram, Clock, Phone } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import storeImage from '@/assets/store/agro-brasil-store.png';
 
 export function ProductStoreSection() {
   const { data: settings } = useSiteSettings();
   
   const storeInfo = settings?.store || {
-    address: 'Rua das Flores, 123 - Centro',
-    city: 'São Paulo - SP',
+    address: 'Av. Brasil, Centro',
+    city: 'Tangará da Serra - MT',
     hours: 'Seg-Sex: 8h às 18h | Sáb: 8h às 12h',
-    phone: '(11) 99999-9999',
-    instagram: '@agroshop',
+    phone: '(65) 99999-9999',
+    instagram: '@agrobrasil',
   };
+
+  const googleMapsUrl = 'https://www.google.com/maps/@-14.6173429,-57.4818371,3a,75y,231.16h,90.28t/data=!3m7!1e1!3m5!1s6w2euewDhJoY27buh3vSWg!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D-0.2807571503391273%26panoid%3D6w2euewDhJoY27buh3vSWg%26yaw%3D231.16186569814528!7i16384!8i8192?entry=ttu';
 
   const handleInstagramClick = () => {
     const username = storeInfo.instagram.replace('@', '');
@@ -41,8 +44,8 @@ export function ProductStoreSection() {
           {/* Store Image */}
           <div className="relative h-64 md:h-auto">
             <img 
-              src="https://images.unsplash.com/photo-1560493676-04071c5f467b?w=800&auto=format&fit=crop&q=60"
-              alt="Nossa Loja"
+              src={storeImage}
+              alt="Agro Brasil - Nossa Loja"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent md:bg-gradient-to-r" />
@@ -78,7 +81,7 @@ export function ProductStoreSection() {
               </div>
 
               <a 
-                href={`https://maps.google.com/?q=${encodeURIComponent(storeInfo.address + ', ' + storeInfo.city)}`}
+                href={googleMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-5 py-3 rounded-lg transition-colors mt-4"

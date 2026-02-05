@@ -1,4 +1,3 @@
-import { HeroBanner } from '@/components/home/HeroBanner';
 import { FeaturedProducts } from '@/components/home/FeaturedProducts';
 import { CategorySection } from '@/components/home/CategorySection';
 import { PromotionSection } from '@/components/home/PromotionSection';
@@ -39,10 +38,7 @@ const stats = [
 export default function HomePage() {
   return (
     <div>
-      {/* Hero Banner */}
-      <HeroBanner />
-
-      {/* Image Banners */}
+      {/* Image Banners Carousel - Full Width */}
       <ImageBanners />
 
       {/* Premium Products - 8 most expensive */}

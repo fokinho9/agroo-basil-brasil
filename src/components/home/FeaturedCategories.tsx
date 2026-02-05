@@ -1,25 +1,36 @@
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+
+// Import category images
+import diversosImg from '@/assets/categories/diversos.jpg';
+import higieneImg from '@/assets/categories/higiene.jpg';
+import vestuarioImg from '@/assets/categories/vestuario.jpg';
+import calcadosImg from '@/assets/categories/calcados.jpg';
 
 const featuredCategories = [
   {
-    name: 'Equipamentos',
-    image: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=400&h=300&fit=crop',
-    description: 'Ferramentas e equipamentos profissionais',
-    slug: 'equipamentos',
+    name: 'Diversos',
+    image: diversosImg,
+    description: 'Acessórios e itens variados',
+    slug: 'diversos',
+  },
+  {
+    name: 'Higiene',
+    image: higieneImg,
+    description: 'Produtos de limpeza e cuidados',
+    slug: 'higiene',
   },
   {
     name: 'Vestuário',
-    image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
+    image: vestuarioImg,
     description: 'Roupas e acessórios para trabalho',
     slug: 'vestuario',
   },
   {
-    name: 'Nutrição Animal',
-    image: 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=400&h=300&fit=crop',
-    description: 'Rações e suplementos',
-    slug: 'nutricao-animal',
+    name: 'Calçados',
+    image: calcadosImg,
+    description: 'Botas e sapatos de qualidade',
+    slug: 'calcados',
   },
 ];
 
@@ -36,12 +47,12 @@ export function FeaturedCategories() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {featuredCategories.map((category) => (
             <Link 
               key={category.slug}
               to={`/produtos?categoria=${category.slug}`}
-              className="group relative h-64 rounded-2xl overflow-hidden"
+              className="group relative aspect-square rounded-2xl overflow-hidden"
             >
               <img 
                 src={category.image}
@@ -50,12 +61,12 @@ export function FeaturedCategories() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/40 to-transparent" />
               
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-card">
-                <h3 className="text-xl font-bold mb-1">{category.name}</h3>
-                <p className="text-sm opacity-80 mb-3">{category.description}</p>
-                <span className="inline-flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all">
+              <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 text-card">
+                <h3 className="text-lg md:text-xl font-bold mb-1">{category.name}</h3>
+                <p className="text-xs md:text-sm opacity-80 mb-2 hidden md:block">{category.description}</p>
+                <span className="inline-flex items-center gap-1 text-xs md:text-sm font-medium group-hover:gap-2 transition-all">
                   Ver Produtos
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
                 </span>
               </div>
             </Link>

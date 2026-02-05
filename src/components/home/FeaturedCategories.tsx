@@ -38,7 +38,7 @@ export function FeaturedCategories() {
         
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {featuredCategories.map(category => <Link key={category.slug} to={`/produtos?categoria=${category.slug}`} className="group relative aspect-square rounded-2xl overflow-hidden">
+          {featuredCategories.map(category => <Link key={category.slug} to={`/categoria/${category.slug}`} className="group relative aspect-square rounded-2xl overflow-hidden">
               <img src={category.image} alt={category.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/40 to-transparent" />
               

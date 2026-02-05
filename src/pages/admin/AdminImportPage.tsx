@@ -14,7 +14,8 @@ import { generateFakeReviews } from '@/hooks/useReviews';
 import { firecrawlApi } from '@/lib/api/firecrawl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2, FileText, FileX } from 'lucide-react';
+import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2, FileText, FileX, ImageIcon } from 'lucide-react';
+import { BulkImageEnhancer } from '@/components/admin/BulkImageEnhancer';
 
 // Function to clean and extract only the product description
 function cleanProductDescription(rawMarkdown: string): string {
@@ -932,9 +933,13 @@ export default function AdminImportPage() {
         )}
 
         <Tabs defaultValue="description" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="csv">Importar CSV</TabsTrigger>
             <TabsTrigger value="description">Importar Descrição</TabsTrigger>
+            <TabsTrigger value="images" className="flex items-center gap-1">
+              <ImageIcon className="h-3.5 w-3.5" />
+              Melhorar Imagens
+            </TabsTrigger>
             <TabsTrigger value="reviews">Gerar Avaliações</TabsTrigger>
           </TabsList>
 
@@ -1297,6 +1302,14 @@ export default function AdminImportPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Images Enhancement Tab */}
+          <TabsContent value="images">
+            <BulkImageEnhancer 
+              products={products || []} 
+              onUpdate={refetchProducts} 
+            />
           </TabsContent>
 
           {/* Reviews Tab */}

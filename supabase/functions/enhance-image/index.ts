@@ -44,7 +44,7 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Enhance this product image: improve lighting, increase sharpness, boost colors slightly, remove any noise or artifacts, and make it look more professional for an e-commerce store. Keep the product as the main focus and maintain its original appearance and colors. Ultra high resolution output."
+                text: "IMPORTANT: Do NOT change, alter, modify, or replace the product in this image. Only enhance the QUALITY of this exact same image. Apply these quality improvements: increase resolution and sharpness, improve lighting and exposure, reduce noise and artifacts, enhance contrast slightly. The output must be the EXACT SAME product photo, just with better image quality. Do not add, remove, or change any elements. Ultra high resolution output."
               },
               {
                 type: "image_url",

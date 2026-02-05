@@ -126,7 +126,7 @@ export default function CheckoutPage() {
   const isHighValue = finalTotal > 500;
 
   // Get store phone for WhatsApp
-  const storePhone = settings?.store?.phone?.replace(/\D/g, '') || '5565999999999';
+  const storePhone = settings?.store?.phone?.replace(/\D/g, '') || '5511972238165';
 
   // Check payment status periodically (only for PIX)
   useEffect(() => {

@@ -96,7 +96,7 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="hidden sm:inline">Solicite via</span> WhatsApp
             </Button>
           ) : (
-            <Button size="sm" className="w-full gap-1 md:gap-2 text-xs md:text-sm h-8 md:h-10" onClick={handleAddToCart}>
+            <Button size="sm" className="w-full gap-1 md:gap-2 text-xs md:text-sm h-8 md:h-10 bg-success hover:bg-success/90 text-white" onClick={handleAddToCart}>
               <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
               Comprar
             </Button>

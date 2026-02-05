@@ -296,7 +296,7 @@ export default function ProductPage() {
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
-                <Button size="lg" className="flex-1 gap-2 h-12 text-sm md:text-base font-bold" onClick={handleAddToCart} disabled={isAddingToCart}>
+                <Button size="lg" className="flex-1 gap-2 h-12 text-sm md:text-base font-bold bg-success hover:bg-success/90 text-white" onClick={handleAddToCart} disabled={isAddingToCart}>
                   <ShoppingCart className="h-5 w-5" />
                   {isAddingToCart ? 'Adicionado!' : 'COMPRAR AGORA'}
                 </Button>

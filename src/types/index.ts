@@ -78,6 +78,7 @@ export interface SiteSetting {
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedSize?: string | null;
 }
 
 export interface Review {

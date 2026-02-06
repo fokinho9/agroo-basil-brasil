@@ -31,9 +31,10 @@ export default function AdminAbandonedCartsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleWhatsApp = (cart: AbandonedCart) => {
-    const productsList = cart.cart_items.map(item => 
-      `• ${item.product.name} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`
-    ).join('\n');
+    const productsList = cart.cart_items.map(item => {
+      const sizeSuffix = item.selectedSize ? ` - Tam: ${item.selectedSize}` : '';
+      return `• ${item.product.name}${sizeSuffix} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`;
+    }).join('\n');
 
     const message = `Olá${cart.customer_name ? ` ${cart.customer_name.split(' ')[0]}` : ''}! 👋\n\n` +
       `Notamos que você deixou alguns produtos no carrinho da nossa loja:\n\n` +
@@ -224,6 +225,9 @@ export default function AdminAbandonedCartsPage() {
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{item.product.name}</p>
+                          {item.selectedSize && (
+                            <p className="text-xs text-primary">Tam: {item.selectedSize}</p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {item.quantity}x {formatCurrency(item.product.price)}
                           </p>

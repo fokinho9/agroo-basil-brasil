@@ -1,34 +1,27 @@
 import { MapPin, Instagram, Clock, Phone } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import storeImage from '@/assets/store/agro-brasil-store.png';
-
 export function StoreInfo() {
-  const { data: settings } = useSiteSettings();
-  
+  const {
+    data: settings
+  } = useSiteSettings();
   const storeInfo = settings?.store || {
     address: 'Av. Brasil, Centro',
     city: 'Tangará da Serra - MT',
     hours: 'Seg-Sex: 8h às 18h | Sáb: 8h às 12h',
     phone: '(65) 99999-9999',
-    instagram: '@agrobrasil',
+    instagram: '@agrobrasil'
   };
-
   const googleMapsUrl = 'https://www.google.com/maps/@-14.6173429,-57.4818371,3a,75y,231.16h,90.28t/data=!3m7!1e1!3m5!1s6w2euewDhJoY27buh3vSWg!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D-0.2807571503391273%26panoid%3D6w2euewDhJoY27buh3vSWg%26yaw%3D231.16186569814528!7i16384!8i8192?entry=ttu';
-
   const handleInstagramClick = () => {
     const username = storeInfo.instagram.replace('@', '');
     window.open(`https://instagram.com/${username}`, '_blank');
   };
-
-  return (
-    <section className="bg-muted py-8">
+  return <section className="bg-muted py-8">
       <div className="container mx-auto px-4">
         {/* Instagram CTA */}
         <div className="mb-6">
-          <button
-            onClick={handleInstagramClick}
-            className="w-full group flex items-center justify-center gap-4 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 hover:from-purple-700 hover:via-pink-600 hover:to-orange-600 text-white rounded-xl p-5 transition-all duration-300 hover:scale-[1.02] shadow-lg"
-          >
+          <button onClick={handleInstagramClick} className="w-full group flex items-center justify-center gap-4 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 hover:from-purple-700 hover:via-pink-600 hover:to-orange-600 text-white rounded-xl p-5 transition-all duration-300 hover:scale-[1.02] shadow-lg">
             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
               <Instagram className="h-6 w-6" />
             </div>
@@ -44,11 +37,7 @@ export function StoreInfo() {
           <div className="grid md:grid-cols-2">
             {/* Store Image */}
             <div className="relative h-64 md:h-auto">
-              <img 
-                src={storeImage}
-                alt="Agro Brasil - Nossa Loja"
-                className="w-full h-full object-cover"
-              />
+              <img src={storeImage} alt="Agro Brasil - Nossa Loja" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent md:bg-gradient-to-r" />
               <div className="absolute bottom-4 left-4 md:hidden">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -76,17 +65,9 @@ export function StoreInfo() {
                   <span>{storeInfo.hours}</span>
                 </div>
                 
-                <div className="flex items-center gap-3 opacity-90">
-                  <Phone className="h-5 w-5 flex-shrink-0" />
-                  <span className="font-medium">{storeInfo.phone}</span>
-                </div>
+                
 
-                <a 
-                  href={googleMapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-5 py-3 rounded-lg transition-colors mt-4"
-                >
+                <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-5 py-3 rounded-lg transition-colors mt-4">
                   <MapPin className="h-5 w-5" />
                   Ver no Google Maps
                 </a>
@@ -95,6 +76,5 @@ export function StoreInfo() {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 }

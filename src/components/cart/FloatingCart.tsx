@@ -48,7 +48,7 @@ export function FloatingCart() {
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {items.map((item) => (
-            <div key={item.product.id} className="flex gap-3 bg-muted rounded-lg p-3">
+            <div key={`${item.product.id}-${item.selectedSize || 'no-size'}`} className="flex gap-3 bg-muted rounded-lg p-3">
               <img
                 src={item.product.image_url || '/placeholder.svg'}
                 alt={item.product.name}
@@ -58,6 +58,11 @@ export function FloatingCart() {
                 <h3 className="font-medium text-foreground text-sm truncate">
                   {item.product.name}
                 </h3>
+                {item.selectedSize && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Tamanho: <span className="font-medium text-foreground">{item.selectedSize}</span>
+                  </p>
+                )}
                 <p className="text-primary font-semibold text-sm mt-1">
                   {formatCurrency(item.product.price)}
                 </p>
@@ -66,7 +71,7 @@ export function FloatingCart() {
                     variant="outline"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                    onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.selectedSize)}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
@@ -75,7 +80,7 @@ export function FloatingCart() {
                     variant="outline"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                    onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.selectedSize)}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -83,7 +88,7 @@ export function FloatingCart() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 ml-auto text-destructive hover:text-destructive"
-                    onClick={() => removeFromCart(item.product.id)}
+                    onClick={() => removeFromCart(item.product.id, item.selectedSize)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

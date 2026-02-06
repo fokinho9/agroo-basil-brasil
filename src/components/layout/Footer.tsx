@@ -52,11 +52,6 @@ export function Footer() {
                   Sobre Nós
                 </Link>
               </li>
-              <li>
-                <Link to="/contato" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Contato
-                </Link>
-              </li>
             </ul>
           </div>
 

@@ -9,7 +9,7 @@ import { ImageBanners } from '@/components/home/ImageBanners';
 import { AllProducts } from '@/components/home/AllProducts';
 import { PremiumProducts } from '@/components/home/PremiumProducts';
 import { MantasSection } from '@/components/home/MantasSection';
-import { ProductStoreSection } from '@/components/products/ProductStoreSection';
+
 import { Leaf, Award, Package, Timer } from 'lucide-react';
 
 const stats = [
@@ -88,10 +88,6 @@ export default function HomePage() {
       {/* Testimonials */}
       <TestimonialsSection />
 
-      {/* Store Section with Instagram */}
-      <div className="container mx-auto px-4">
-        <ProductStoreSection />
-      </div>
     </div>
   );
 }

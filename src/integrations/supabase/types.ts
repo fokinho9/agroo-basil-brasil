@@ -122,6 +122,54 @@ export type Database = {
         }
         Relationships: []
       }
+      import_jobs: {
+        Row: {
+          completed_at: string | null
+          config: Json | null
+          created_at: string
+          error_count: number
+          error_message: string | null
+          id: string
+          processed_items: number
+          results: Json | null
+          status: string
+          success_count: number
+          total_items: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          config?: Json | null
+          created_at?: string
+          error_count?: number
+          error_message?: string | null
+          id?: string
+          processed_items?: number
+          results?: Json | null
+          status?: string
+          success_count?: number
+          total_items?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          config?: Json | null
+          created_at?: string
+          error_count?: number
+          error_message?: string | null
+          id?: string
+          processed_items?: number
+          results?: Json | null
+          status?: string
+          success_count?: number
+          total_items?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null

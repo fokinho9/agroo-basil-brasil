@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,10 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCreateProduct, useAdminProducts, useUpdateProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { generateFakeReviews } from '@/hooks/useReviews';
+import { useActiveImportJob, useCreateImportJob, useCancelImportJob } from '@/hooks/useImportJobs';
 import { firecrawlApi } from '@/lib/api/firecrawl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2, FileText, FileX, ImageIcon } from 'lucide-react';
+import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2, FileText, FileX, ImageIcon, RefreshCw } from 'lucide-react';
 import { BulkImageEnhancer } from '@/components/admin/BulkImageEnhancer';
 
 // Function to clean and extract only the product description
@@ -293,6 +294,11 @@ export default function AdminImportPage() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   
+  // Background import job hooks
+  const { data: activeDescriptionJob, refetch: refetchJob } = useActiveImportJob('descriptions');
+  const createImportJob = useCreateImportJob();
+  const cancelImportJob = useCancelImportJob();
+  
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<{ success: number; errors: number }>({ success: 0, errors: 0 });
@@ -333,6 +339,13 @@ export default function AdminImportPage() {
   const [priceFixProgress, setPriceFixProgress] = useState(0);
   const [priceFixResults, setPriceFixResults] = useState<{ matched: number; updated: number; notFound: number }>({ matched: 0, updated: 0, notFound: 0 });
   const priceFixInputRef = useRef<HTMLInputElement>(null);
+
+  // Refetch products when job completes
+  useEffect(() => {
+    if (activeDescriptionJob?.status === 'completed') {
+      refetchProducts();
+    }
+  }, [activeDescriptionJob?.status, refetchProducts]);
 
   // Computed product lists
   const productsWithDescription = products?.filter(p => p.description && p.description.trim().length > 20) || [];
@@ -521,55 +534,43 @@ export default function AdminImportPage() {
     setBulkUrls(prev => prev.filter(item => item.productId !== productId));
   };
 
-  // Process bulk import
+  // Process bulk import using background job
   const handleBulkScrape = async () => {
     if (bulkUrls.length === 0) {
       toast.error('Adicione produtos à lista primeiro');
       return;
     }
 
-    setIsBulkScraping(true);
-    setBulkProgress(0);
+    try {
+      await createImportJob.mutateAsync({
+        type: 'descriptions',
+        total_items: bulkUrls.length,
+        config: {
+          items: bulkUrls.map(item => ({
+            productId: item.productId,
+            url: item.url,
+          })),
+        },
+      });
 
-    let processed = 0;
-    let success = 0;
-
-    for (const item of bulkUrls) {
-      try {
-        const response = await firecrawlApi.scrape(item.url, {
-          formats: ['markdown'],
-          onlyMainContent: true,
-        });
-
-        if (response.success) {
-          const description = response.data?.markdown || response.data?.data?.markdown || '';
-          
-          if (description) {
-            const cleanedDescription = cleanProductDescription(description);
-
-            if (cleanedDescription) {
-              await updateProduct.mutateAsync({
-                id: item.productId,
-                description: cleanedDescription,
-              });
-              success++;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error scraping:', error);
-      }
-
-      processed++;
-      setBulkProgress(Math.round((processed / bulkUrls.length) * 100));
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
+      toast.success(`Importação iniciada em background! Você pode fechar esta página. ${bulkUrls.length} descrições serão importadas.`);
+      setBulkUrls([]);
+    } catch (error: any) {
+      console.error('Error starting import job:', error);
+      toast.error(error.message || 'Erro ao iniciar importação');
     }
+  };
 
-    toast.success(`Importação em massa concluída! ${success}/${bulkUrls.length} descrições importadas.`);
-    setBulkUrls([]);
-    setIsBulkScraping(false);
-    refetchProducts();
+  // Cancel active job
+  const handleCancelJob = async () => {
+    if (activeDescriptionJob?.id) {
+      try {
+        await cancelImportJob.mutateAsync(activeDescriptionJob.id);
+        toast.success('Importação cancelada');
+      } catch (error) {
+        toast.error('Erro ao cancelar importação');
+      }
+    }
   };
 
   // Normalize text for matching
@@ -1443,6 +1444,51 @@ export default function AdminImportPage() {
               </CardContent>
             </Card>
 
+            {/* Active Background Job Status */}
+            {activeDescriptionJob && (activeDescriptionJob.status === 'pending' || activeDescriptionJob.status === 'running') && (
+              <Card className="border-primary">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-primary">
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                    Importação em Andamento (Background)
+                  </CardTitle>
+                  <CardDescription>
+                    Esta importação continua mesmo se você fechar a página
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Progress 
+                    value={activeDescriptionJob.total_items > 0 
+                      ? (activeDescriptionJob.processed_items / activeDescriptionJob.total_items) * 100 
+                      : 0
+                    } 
+                  />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Progresso: {activeDescriptionJob.processed_items}/{activeDescriptionJob.total_items}
+                    </span>
+                    <div className="flex gap-4">
+                      <span className="flex items-center gap-1 text-green-600">
+                        <Check className="h-4 w-4" /> {activeDescriptionJob.success_count} sucesso
+                      </span>
+                      {activeDescriptionJob.error_count > 0 && (
+                        <span className="flex items-center gap-1 text-destructive">
+                          <AlertCircle className="h-4 w-4" /> {activeDescriptionJob.error_count} erros
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleCancelJob}
+                    className="w-full"
+                  >
+                    Cancelar Importação
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Bulk Import */}
             <Card>
               <CardHeader>
@@ -1451,15 +1497,16 @@ export default function AdminImportPage() {
                   Importação em Massa de Descrições
                 </CardTitle>
                 <CardDescription>
-                  Adicione vários produtos à lista e importe todas as descrições de uma vez
+                  Adicione vários produtos à lista e importe todas as descrições de uma vez.
+                  <strong className="block mt-1 text-primary">A importação continua mesmo se você fechar a página!</strong>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {isBulkScraping ? (
+                {createImportJob.isPending ? (
                   <div className="space-y-4">
-                    <Progress value={bulkProgress} />
+                    <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground text-center">
-                      Importando descrições... {bulkProgress}%
+                      Iniciando importação em background...
                     </p>
                   </div>
                 ) : (
@@ -1510,9 +1557,10 @@ export default function AdminImportPage() {
                           onClick={handleBulkScrape}
                           className="w-full"
                           size="lg"
+                          disabled={activeDescriptionJob?.status === 'running' || activeDescriptionJob?.status === 'pending'}
                         >
                           <Sparkles className="h-4 w-4 mr-2" />
-                          Importar {bulkUrls.length} Descrições
+                          Importar {bulkUrls.length} Descrições em Background
                         </Button>
                       </div>
                     )}

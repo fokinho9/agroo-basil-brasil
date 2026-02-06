@@ -75,9 +75,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error scraping:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to scrape';
+    // Return 200 with success: false to allow frontend to handle gracefully
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: errorMessage, code: 'INTERNAL_ERROR' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

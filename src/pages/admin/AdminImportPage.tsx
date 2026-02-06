@@ -326,6 +326,14 @@ export default function AdminImportPage() {
   // Product description filter
   const [descriptionFilter, setDescriptionFilter] = useState<'all' | 'with' | 'without'>('all');
 
+  // Price correction from CSV
+  const [priceFixFile, setPriceFixFile] = useState<File | null>(null);
+  const [priceFixProducts, setPriceFixProducts] = useState<ProductRow[]>([]);
+  const [isFixingPrices, setIsFixingPrices] = useState(false);
+  const [priceFixProgress, setPriceFixProgress] = useState(0);
+  const [priceFixResults, setPriceFixResults] = useState<{ matched: number; updated: number; notFound: number }>({ matched: 0, updated: 0, notFound: 0 });
+  const priceFixInputRef = useRef<HTMLInputElement>(null);
+
   // Computed product lists
   const productsWithDescription = products?.filter(p => p.description && p.description.trim().length > 20) || [];
   const productsWithoutDescription = products?.filter(p => !p.description || p.description.trim().length <= 20) || [];
@@ -803,6 +811,111 @@ export default function AdminImportPage() {
     return products?.find(p => p.id === id)?.name || 'Produto não encontrado';
   };
 
+  // Handle price fix CSV file selection
+  const handlePriceFixFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Por favor, selecione um arquivo CSV');
+      return;
+    }
+
+    setPriceFixFile(file);
+    
+    const text = await file.text();
+    const csvProducts = parseCSV(text);
+    setPriceFixProducts(csvProducts);
+    
+    if (csvProducts.length === 0) {
+      toast.error('Nenhum produto válido encontrado no arquivo');
+    } else {
+      toast.success(`${csvProducts.length} produtos encontrados no CSV`);
+    }
+  };
+
+  const handleClearPriceFixFile = () => {
+    setPriceFixFile(null);
+    setPriceFixProducts([]);
+    setPriceFixResults({ matched: 0, updated: 0, notFound: 0 });
+    if (priceFixInputRef.current) {
+      priceFixInputRef.current.value = '';
+    }
+  };
+
+  // Fix prices by matching image URLs
+  const handleFixPrices = async () => {
+    if (priceFixProducts.length === 0) {
+      toast.error('Carregue um arquivo CSV primeiro');
+      return;
+    }
+
+    // Get products with zero price
+    const zeroPriceProducts = products?.filter(p => p.price === 0) || [];
+    
+    if (zeroPriceProducts.length === 0) {
+      toast.error('Não há produtos com preço zerado');
+      return;
+    }
+
+    setIsFixingPrices(true);
+    setPriceFixProgress(0);
+    setPriceFixResults({ matched: 0, updated: 0, notFound: 0 });
+
+    let matched = 0;
+    let updated = 0;
+    let notFound = 0;
+    let processed = 0;
+
+    // Create a map of image URLs to CSV products for faster lookup
+    const csvImageMap = new Map<string, ProductRow>();
+    for (const csvProduct of priceFixProducts) {
+      if (csvProduct.image_url && csvProduct.price > 0) {
+        // Normalize URL for comparison
+        const normalizedUrl = csvProduct.image_url.trim().toLowerCase();
+        csvImageMap.set(normalizedUrl, csvProduct);
+      }
+    }
+
+    for (const product of zeroPriceProducts) {
+      processed++;
+      setPriceFixProgress(Math.round((processed / zeroPriceProducts.length) * 100));
+
+      if (!product.image_url) {
+        notFound++;
+        continue;
+      }
+
+      const normalizedProductUrl = product.image_url.trim().toLowerCase();
+      const csvMatch = csvImageMap.get(normalizedProductUrl);
+
+      if (csvMatch && csvMatch.price > 0) {
+        matched++;
+        try {
+          await updateProduct.mutateAsync({
+            id: product.id,
+            price: csvMatch.price,
+            original_price: csvMatch.original_price > csvMatch.price ? csvMatch.original_price : null,
+          });
+          updated++;
+        } catch (error) {
+          console.error('Error updating price for:', product.name, error);
+        }
+      } else {
+        notFound++;
+      }
+
+      setPriceFixResults({ matched, updated, notFound });
+      
+      // Small delay to avoid overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    toast.success(`Correção concluída! ${updated} preços atualizados de ${matched} correspondências encontradas.`);
+    setIsFixingPrices(false);
+    refetchProducts();
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -932,16 +1045,121 @@ export default function AdminImportPage() {
           </Card>
         )}
 
-        <Tabs defaultValue="description" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="prices" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="prices">Corrigir Preços</TabsTrigger>
             <TabsTrigger value="csv">Importar CSV</TabsTrigger>
             <TabsTrigger value="description">Importar Descrição</TabsTrigger>
             <TabsTrigger value="images" className="flex items-center gap-1">
               <ImageIcon className="h-3.5 w-3.5" />
-              Melhorar Imagens
+              Imagens
             </TabsTrigger>
-            <TabsTrigger value="reviews">Gerar Avaliações</TabsTrigger>
+            <TabsTrigger value="reviews">Avaliações</TabsTrigger>
           </TabsList>
+
+          {/* Price Fix Tab */}
+          <TabsContent value="prices">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-orange-500" />
+                  Corrigir Preços Zerados
+                </CardTitle>
+                <CardDescription>
+                  Carregue o CSV com os preços corretos para atualizar produtos com preço zerado.
+                  A correspondência é feita pela URL da imagem.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <p className="text-sm text-orange-600">Preço Zerado</p>
+                    <p className="text-2xl font-bold text-orange-700">
+                      {products?.filter(p => p.price === 0).length || 0}
+                    </p>
+                  </div>
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground">No CSV</p>
+                    <p className="text-2xl font-bold">{priceFixProducts.length}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <p className="text-sm text-green-600">Correspondências</p>
+                    <p className="text-2xl font-bold text-green-700">{priceFixResults.matched}</p>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-600">Atualizados</p>
+                    <p className="text-2xl font-bold text-blue-700">{priceFixResults.updated}</p>
+                  </div>
+                </div>
+
+                {isFixingPrices ? (
+                  <div className="space-y-4">
+                    <Progress value={priceFixProgress} />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progresso: {priceFixProgress}%</span>
+                      <div className="flex gap-4">
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Check className="h-4 w-4" /> {priceFixResults.updated} atualizados
+                        </span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          {priceFixResults.notFound} sem correspondência
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label>Arquivo CSV com Preços</Label>
+                      {priceFixFile ? (
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            <FileUp className="h-8 w-8 text-primary" />
+                            <div>
+                              <p className="font-medium">{priceFixFile.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {priceFixProducts.length} produtos com preço no CSV
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={handleClearPriceFixFile}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              <span className="font-medium">Clique para selecionar</span> o arquivo CSV
+                            </p>
+                          </div>
+                          <input
+                            ref={priceFixInputRef}
+                            type="file"
+                            accept=".csv"
+                            className="hidden"
+                            onChange={handlePriceFixFileSelect}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    <Button 
+                      onClick={handleFixPrices}
+                      disabled={priceFixProducts.length === 0 || (products?.filter(p => p.price === 0).length || 0) === 0}
+                      className="w-full"
+                      size="lg"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Corrigir Preços ({products?.filter(p => p.price === 0).length || 0} produtos)
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* CSV Import Tab */}
           <TabsContent value="csv">

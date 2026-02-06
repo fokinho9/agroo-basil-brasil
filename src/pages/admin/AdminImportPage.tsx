@@ -340,6 +340,12 @@ export default function AdminImportPage() {
   const [priceFixResults, setPriceFixResults] = useState<{ matched: number; updated: number; notFound: number }>({ matched: 0, updated: 0, notFound: 0 });
   const priceFixInputRef = useRef<HTMLInputElement>(null);
 
+  // Price correction from URL scraping
+  const [priceScrapingUrl, setPriceScrapingUrl] = useState('');
+  const [isScrapingPrices, setIsScrapingPrices] = useState(false);
+  const [priceScrapingProgress, setPriceScrapingProgress] = useState(0);
+  const [priceScrapingResults, setPriceScrapingResults] = useState<{ found: number; matched: number; updated: number }>({ found: 0, matched: 0, updated: 0 });
+
   // Refetch products when job completes
   useEffect(() => {
     if (activeDescriptionJob?.status === 'completed') {
@@ -917,6 +923,153 @@ export default function AdminImportPage() {
     refetchProducts();
   };
 
+  // Scrape prices from URL
+  const handleScrapePrices = async () => {
+    if (!priceScrapingUrl.trim()) {
+      toast.error('Digite a URL do site');
+      return;
+    }
+
+    const zeroPriceProducts = products?.filter(p => p.price === 0) || [];
+    
+    if (zeroPriceProducts.length === 0) {
+      toast.error('Não há produtos com preço zerado');
+      return;
+    }
+
+    setIsScrapingPrices(true);
+    setPriceScrapingProgress(0);
+    setPriceScrapingResults({ found: 0, matched: 0, updated: 0 });
+
+    try {
+      // First, map the site to find all product URLs
+      toast.info('Mapeando o site para encontrar produtos...');
+      
+      const mapResponse = await firecrawlApi.map(priceScrapingUrl, { limit: 2000 });
+      
+      let productUrls: string[] = [];
+      
+      if (mapResponse.success && mapResponse.links) {
+        productUrls = mapResponse.links.filter((url: string) => 
+          url.includes('/produto') || 
+          url.includes('/product') || 
+          url.includes('/p/') ||
+          url.match(/\/[\w-]+-\d+$/)
+        );
+      }
+
+      if (productUrls.length === 0) {
+        toast.error('Nenhuma página de produto encontrada no site');
+        setIsScrapingPrices(false);
+        return;
+      }
+
+      toast.success(`${productUrls.length} páginas encontradas. Buscando preços...`);
+      setPriceScrapingResults({ found: productUrls.length, matched: 0, updated: 0 });
+
+      let matched = 0;
+      let updated = 0;
+      let processed = 0;
+
+      // Create name lookup map for zero price products
+      const productNameMap = new Map<string, typeof zeroPriceProducts[0]>();
+      for (const product of zeroPriceProducts) {
+        const normalizedName = normalizeText(product.name);
+        productNameMap.set(normalizedName, product);
+      }
+
+      for (const url of productUrls) {
+        try {
+          const urlSlug = extractSlugFromUrl(url);
+          
+          // Check if URL matches any zero price product
+          let matchedProduct: typeof zeroPriceProducts[0] | undefined;
+          
+          for (const product of zeroPriceProducts) {
+            const productName = normalizeText(product.name);
+            const productWords = productName.split(' ').filter(w => w.length > 2);
+            const urlWords = urlSlug.split(' ').filter(w => w.length > 2);
+
+            let matchCount = 0;
+            for (const pWord of productWords) {
+              for (const uWord of urlWords) {
+                if (pWord.includes(uWord) || uWord.includes(pWord)) {
+                  matchCount++;
+                  break;
+                }
+              }
+            }
+
+            const score = productWords.length > 0 ? matchCount / productWords.length : 0;
+            
+            if (score >= 0.5 && matchCount >= 2) {
+              matchedProduct = product;
+              break;
+            }
+          }
+
+          if (matchedProduct) {
+            // Scrape the page to get the price
+            const scrapeResponse = await firecrawlApi.scrape(url, {
+              formats: ['markdown'],
+              onlyMainContent: true,
+            });
+
+            if (scrapeResponse.success) {
+              const markdown = scrapeResponse.data?.markdown || scrapeResponse.data?.data?.markdown || '';
+              
+              // Extract price from markdown
+              const priceMatches = markdown.match(/R\$\s*([\d.,]+)/g);
+              if (priceMatches && priceMatches.length > 0) {
+                // Get the first reasonable price
+                let foundPrice = 0;
+                for (const priceMatch of priceMatches) {
+                  const price = parseBrazilianPrice(priceMatch);
+                  if (price > 0 && price < 100000) { // Reasonable price range
+                    foundPrice = price;
+                    break;
+                  }
+                }
+
+                if (foundPrice > 0) {
+                  matched++;
+                  await updateProduct.mutateAsync({
+                    id: matchedProduct.id,
+                    price: foundPrice,
+                  });
+                  updated++;
+                  
+                  // Remove from list to avoid duplicates
+                  const idx = zeroPriceProducts.findIndex(p => p.id === matchedProduct!.id);
+                  if (idx !== -1) {
+                    zeroPriceProducts.splice(idx, 1);
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error processing URL:', url, error);
+        }
+
+        processed++;
+        setPriceScrapingProgress(Math.round((processed / productUrls.length) * 100));
+        setPriceScrapingResults({ found: productUrls.length, matched, updated });
+        
+        // Delay between requests
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
+      toast.success(`Busca concluída! ${updated} preços atualizados.`);
+      refetchProducts();
+    } catch (error: any) {
+      console.error('Price scraping error:', error);
+      toast.error(error.message || 'Erro ao buscar preços');
+    } finally {
+      setIsScrapingPrices(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -1059,12 +1212,71 @@ export default function AdminImportPage() {
           </TabsList>
 
           {/* Price Fix Tab */}
-          <TabsContent value="prices">
+          <TabsContent value="prices" className="space-y-6">
+            {/* Price Scraping from URL */}
+            <Card className="border-primary/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" />
+                  Buscar Preços por URL
+                </CardTitle>
+                <CardDescription>
+                  Cole a URL do site e o sistema irá buscar automaticamente os preços dos produtos zerados
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isScrapingPrices ? (
+                  <div className="space-y-4">
+                    <Progress value={priceScrapingProgress} />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progresso: {priceScrapingProgress}%</span>
+                      <div className="flex gap-4">
+                        <span className="text-muted-foreground">
+                          {priceScrapingResults.found} páginas encontradas
+                        </span>
+                        <span className="text-muted-foreground">
+                          {priceScrapingResults.matched} correspondências
+                        </span>
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Check className="h-4 w-4" /> {priceScrapingResults.updated} atualizados
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>URL do Site</Label>
+                      <Input 
+                        placeholder="https://loja.com.br" 
+                        value={priceScrapingUrl}
+                        onChange={(e) => setPriceScrapingUrl(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        O sistema irá mapear o site, encontrar páginas de produtos e extrair os preços automaticamente
+                      </p>
+                    </div>
+
+                    <Button 
+                      onClick={handleScrapePrices}
+                      disabled={!priceScrapingUrl.trim() || (products?.filter(p => p.price === 0).length || 0) === 0}
+                      size="lg"
+                      className="w-full"
+                    >
+                      <Globe className="h-4 w-4 mr-2" />
+                      Buscar Preços ({products?.filter(p => p.price === 0).length || 0} produtos zerados)
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Price Fix from CSV */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                  Corrigir Preços Zerados
+                  <FileUp className="h-5 w-5" />
+                  Corrigir via CSV
                 </CardTitle>
                 <CardDescription>
                   Carregue o CSV com os preços corretos para atualizar produtos com preço zerado.
@@ -1154,7 +1366,7 @@ export default function AdminImportPage() {
                       size="lg"
                     >
                       <Check className="h-4 w-4 mr-2" />
-                      Corrigir Preços ({products?.filter(p => p.price === 0).length || 0} produtos)
+                      Corrigir Preços via CSV ({products?.filter(p => p.price === 0).length || 0} produtos)
                     </Button>
                   </div>
                 )}

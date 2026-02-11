@@ -64,6 +64,7 @@ const App = () => (
               <Route path="/fokinho/configuracoes" element={<AdminSettingsPage />} />
               <Route path="/fokinho/importar" element={<AdminImportPage />} />
               
+              
               {/* Keep old admin routes redirecting */}
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route path="/admin/*" element={<AdminLoginPage />} />

@@ -225,6 +225,7 @@ export type Database = {
           customer_address: string | null
           customer_cep: string | null
           customer_city: string | null
+          customer_cpf: string | null
           customer_email: string | null
           customer_name: string
           customer_phone: string
@@ -233,8 +234,12 @@ export type Database = {
           notes: string | null
           payment_method: string | null
           pix_code: string | null
+          pix_qr_code: string | null
+          pix_qr_code_image: string | null
+          podpay_transaction_id: string | null
           status: string | null
           total: number
+          tracking_code: string | null
           updated_at: string | null
         }
         Insert: {
@@ -246,6 +251,7 @@ export type Database = {
           customer_address?: string | null
           customer_cep?: string | null
           customer_city?: string | null
+          customer_cpf?: string | null
           customer_email?: string | null
           customer_name: string
           customer_phone: string
@@ -254,8 +260,12 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           pix_code?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_image?: string | null
+          podpay_transaction_id?: string | null
           status?: string | null
           total: number
+          tracking_code?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -267,6 +277,7 @@ export type Database = {
           customer_address?: string | null
           customer_cep?: string | null
           customer_city?: string | null
+          customer_cpf?: string | null
           customer_email?: string | null
           customer_name?: string
           customer_phone?: string
@@ -275,8 +286,12 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           pix_code?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_image?: string | null
+          podpay_transaction_id?: string | null
           status?: string | null
           total?: number
+          tracking_code?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -339,28 +354,43 @@ export type Database = {
       }
       reviews: {
         Row: {
+          approved: boolean | null
           comment: string
           created_at: string
+          display_date: string | null
           id: string
+          images: string[] | null
+          instagram_handle: string | null
           product_id: string
           rating: number
           reviewer_name: string
+          video_url: string | null
         }
         Insert: {
+          approved?: boolean | null
           comment: string
           created_at?: string
+          display_date?: string | null
           id?: string
+          images?: string[] | null
+          instagram_handle?: string | null
           product_id: string
           rating: number
           reviewer_name: string
+          video_url?: string | null
         }
         Update: {
+          approved?: boolean | null
           comment?: string
           created_at?: string
+          display_date?: string | null
           id?: string
+          images?: string[] | null
+          instagram_handle?: string | null
           product_id?: string
           rating?: number
           reviewer_name?: string
+          video_url?: string | null
         }
         Relationships: [
           {

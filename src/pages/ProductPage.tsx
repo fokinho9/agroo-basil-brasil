@@ -14,7 +14,6 @@ import { ProductReviews } from '@/components/products/ProductReviews';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { FloatingBuyButton } from '@/components/products/FloatingBuyButton';
 import { ProductStoreSection } from '@/components/products/ProductStoreSection';
-import { SizeSelector, productNeedsSize } from '@/components/products/SizeSelector';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -123,7 +122,6 @@ export default function ProductPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [reviewsGenerated, setReviewsGenerated] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   // Auto-generate reviews if none exist
   useEffect(() => {
@@ -178,14 +176,9 @@ export default function ProductPage() {
     const message = isPriceOnRequest ? `Olá! Gostaria de saber o preço do produto: ${product.name}` : `Olá! Tenho interesse no produto: ${product.name} - ${formatCurrency(product.price)}`;
     window.open(createWhatsAppLink(whatsappSettings.number, message), '_blank');
   };
-  const needsSize = productNeedsSize(product.name);
-  
   const handleAddToCart = () => {
-    if (needsSize && !selectedSize) {
-      return; // Don't add if size is required but not selected
-    }
     setIsAddingToCart(true);
-    addToCart(product, quantity, selectedSize);
+    addToCart(product, quantity);
     setTimeout(() => setIsAddingToCart(false), 1000);
   };
   const nextImage = () => {
@@ -291,15 +284,6 @@ export default function ProductPage() {
             <span className="text-success font-medium">Disponível - Envio imediato</span>
           </div>
 
-          {/* Size Selector */}
-          {!isHighValue && needsSize && (
-            <SizeSelector
-              productName={product.name}
-              selectedSize={selectedSize}
-              onSizeSelect={setSelectedSize}
-            />
-          )}
-
           {/* Quantity and Add to Cart */}
           {!isHighValue && <div className="space-y-3">
               <div className="flex items-center gap-2 md:gap-3">
@@ -312,12 +296,7 @@ export default function ProductPage() {
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
-                <Button 
-                  size="lg" 
-                  className="flex-1 gap-2 h-11 md:h-12 text-xs md:text-base font-bold bg-success hover:bg-success/90 text-white min-w-0" 
-                  onClick={handleAddToCart} 
-                  disabled={isAddingToCart || (needsSize && !selectedSize)}
-                >
+                <Button size="lg" className="flex-1 gap-2 h-11 md:h-12 text-xs md:text-base font-bold bg-success hover:bg-success/90 text-white min-w-0" onClick={handleAddToCart} disabled={isAddingToCart}>
                   <ShoppingCart className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
                   <span className="truncate">{isAddingToCart ? 'Adicionado!' : 'COMPRAR AGORA'}</span>
                 </Button>

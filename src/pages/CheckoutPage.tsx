@@ -345,7 +345,7 @@ export default function CheckoutPage() {
         },
         items: items.map((item) => ({
           product_id: item.product.id,
-          product_name: item.selectedSize ? `${item.product.name} (Tam: ${item.selectedSize})` : item.product.name,
+          product_name: item.product.name,
           quantity: item.quantity,
           price: item.product.price,
         })),
@@ -367,7 +367,7 @@ export default function CheckoutPage() {
               phone: formData.phone,
             },
             items: items.map((item) => ({
-              name: item.selectedSize ? `${item.product.name} (Tam: ${item.selectedSize})` : item.product.name,
+              name: item.product.name,
               quantity: item.quantity,
               price: item.product.price,
             })),
@@ -416,10 +416,9 @@ export default function CheckoutPage() {
   };
 
   const handleWhatsAppQuote = () => {
-    const productsList = items.map(item => {
-      const sizeSuffix = item.selectedSize ? ` - Tam: ${item.selectedSize}` : '';
-      return `• ${item.product.name}${sizeSuffix} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`;
-    }).join('\n');
+    const productsList = items.map(item => 
+      `• ${item.product.name} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`
+    ).join('\n');
 
     const fullAddress = formData.address 
       ? `${formData.address}${formData.addressNumber ? ', ' + formData.addressNumber : ''}${formData.complement ? ' - ' + formData.complement : ''}`
@@ -788,7 +787,7 @@ export default function CheckoutPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {items.map((item) => (
-                      <div key={`${item.product.id}-${item.selectedSize || 'no-size'}`} className="flex gap-4 p-3 bg-muted/50 rounded-lg">
+                      <div key={item.product.id} className="flex gap-4 p-3 bg-muted/50 rounded-lg">
                         <img
                           src={item.product.image_url || '/placeholder.svg'}
                           alt={item.product.name}
@@ -798,11 +797,6 @@ export default function CheckoutPage() {
                           <p className="font-medium text-sm md:text-base line-clamp-2">
                             {item.product.name}
                           </p>
-                          {item.selectedSize && (
-                            <p className="text-xs text-muted-foreground">
-                              Tamanho: <span className="font-medium">{item.selectedSize}</span>
-                            </p>
-                          )}
                           <p className="text-sm text-muted-foreground mt-1">
                             Qtd: {item.quantity}
                           </p>

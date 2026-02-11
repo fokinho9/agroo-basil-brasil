@@ -3,9 +3,9 @@ import { CartItem, Product } from '@/types';
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity?: number, selectedSize?: string | null) => void;
-  removeFromCart: (productId: string, selectedSize?: string | null) => void;
-  updateQuantity: (productId: string, quantity: number, selectedSize?: string | null) => void;
+  addToCart: (product: Product, quantity?: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -46,22 +46,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addToCart = useCallback((product: Product, quantity = 1, selectedSize: string | null = null) => {
+  const addToCart = useCallback((product: Product, quantity = 1) => {
     setItems((currentItems) => {
-      // Find item with same product AND same size
-      const existingItem = currentItems.find(
-        (item) => item.product.id === product.id && item.selectedSize === selectedSize
-      );
+      const existingItem = currentItems.find((item) => item.product.id === product.id);
       
       if (existingItem) {
         return currentItems.map((item) =>
-          item.product.id === product.id && item.selectedSize === selectedSize
+          item.product.id === product.id
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
       
-      return [...currentItems, { product, quantity, selectedSize }];
+      return [...currentItems, { product, quantity }];
     });
     
     // Trigger notification and animation instead of opening cart
@@ -70,23 +67,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setShouldAnimate(true);
   }, []);
 
-  const removeFromCart = (productId: string, selectedSize: string | null = null) => {
-    setItems((currentItems) => currentItems.filter(
-      (item) => !(item.product.id === productId && item.selectedSize === selectedSize)
-    ));
+  const removeFromCart = (productId: string) => {
+    setItems((currentItems) => currentItems.filter((item) => item.product.id !== productId));
   };
 
-  const updateQuantity = (productId: string, quantity: number, selectedSize: string | null = null) => {
+  const updateQuantity = (productId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId, selectedSize);
+      removeFromCart(productId);
       return;
     }
     
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.product.id === productId && item.selectedSize === selectedSize
-          ? { ...item, quantity }
-          : item
+        item.product.id === productId ? { ...item, quantity } : item
       )
     );
   };

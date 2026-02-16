@@ -121,6 +121,8 @@ export default function CheckoutPage() {
     expiry: '',
     cvv: '',
   });
+  const [changeNowUrl, setChangeNowUrl] = useState<string | null>(null);
+  const [isLoadingWidget, setIsLoadingWidget] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const total = getTotal();
@@ -130,6 +132,13 @@ export default function CheckoutPage() {
 
   // Get store phone for WhatsApp
   const storePhone = settings?.store?.phone?.replace(/\D/g, '') || '5511972238165';
+
+  // Load ChangeNow widget when card payment is selected
+  useEffect(() => {
+    if (currentStep === 'payment' && paymentMethod === 'card' && !changeNowUrl && !isLoadingWidget) {
+      loadChangeNowWidget();
+    }
+  }, [currentStep, paymentMethod]);
 
   // Check payment status periodically (only for PIX)
   useEffect(() => {
@@ -447,6 +456,22 @@ export default function CheckoutPage() {
     setTimeout(() => setCopied(false), 3000);
   };
 
+  const loadChangeNowWidget = async () => {
+    setIsLoadingWidget(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('changenow-widget', {
+        body: { amount: finalTotal, fromCurrency: 'brl', toCurrency: 'btc' },
+      });
+      if (error) throw error;
+      setChangeNowUrl(data.widgetUrl);
+    } catch (err) {
+      console.error('Error loading ChangeNow widget:', err);
+      setChangeNowUrl(null);
+    } finally {
+      setIsLoadingWidget(false);
+    }
+  };
+
   const handleFinish = () => {
     clearCart();
     toast.success('Obrigado pela compra!');
@@ -630,73 +655,39 @@ export default function CheckoutPage() {
                     <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="cardNumber">Número do Cartão</Label>
-                      <Input
-                        id="cardNumber"
-                        name="number"
-                        value={cardData.number}
-                        onChange={handleCardInputChange}
-                        placeholder="0000 0000 0000 0000"
-                        className="mt-1"
+                  {isLoadingWidget ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="ml-2">Carregando pagamento...</span>
+                    </div>
+                  ) : changeNowUrl ? (
+                    <div className="rounded-xl overflow-hidden border border-border">
+                      <iframe
+                        src={changeNowUrl}
+                        width="100%"
+                        height="500"
+                        frameBorder="0"
+                        allow="clipboard-read; clipboard-write"
+                        style={{ border: 'none' }}
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="cardHolder">Nome no Cartão</Label>
-                      <Input
-                        id="cardHolder"
-                        name="holder"
-                        value={cardData.holder}
-                        onChange={handleCardInputChange}
-                        placeholder="NOME COMO NO CARTÃO"
-                        className="mt-1 uppercase"
-                      />
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Erro ao carregar widget de pagamento.</p>
+                      <Button variant="outline" className="mt-4" onClick={loadChangeNowWidget}>
+                        Tentar novamente
+                      </Button>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="cardExpiry">Validade</Label>
-                        <Input
-                          id="cardExpiry"
-                          name="expiry"
-                          value={cardData.expiry}
-                          onChange={handleCardInputChange}
-                          placeholder="MM/AA"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cardCvv">CVV</Label>
-                        <Input
-                          id="cardCvv"
-                          name="cvv"
-                          value={cardData.cvv}
-                          onChange={handleCardInputChange}
-                          placeholder="123"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
-                    onClick={handleCardSubmit}
-                    disabled={updateOrder.isPending}
-                  >
-                    {updateOrder.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Finalizar Pagamento
-                      </>
-                    )}
-                  </Button>
+                  <div className="bg-muted rounded-xl p-4">
+                    <h4 className="font-medium mb-3 text-sm">Como pagar com cartão:</h4>
+                    <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                      <li>Preencha os dados no widget acima</li>
+                      <li>O pagamento será processado via ChangeNow</li>
+                      <li>Após confirmação, seu pedido será processado</li>
+                    </ol>
+                  </div>
                 </>
               )}
 

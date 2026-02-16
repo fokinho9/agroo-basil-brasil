@@ -529,19 +529,15 @@ export default function CheckoutPage() {
                       <span className="ml-2">Carregando pagamento...</span>
                     </div>
                   ) : changeNowUrl ? (
-                    <div className="text-center space-y-4 py-4">
-                      <p className="text-sm text-muted-foreground">
-                        Clique no botão abaixo para finalizar o pagamento com cartão de crédito via ChangeNow.
-                        O valor de <strong>{formatCurrency(finalTotal)}</strong> já estará preenchido.
-                      </p>
-                      <Button
-                        size="lg"
-                        className="w-full text-lg py-6"
-                        onClick={() => window.open(changeNowUrl, '_blank')}
-                      >
-                        <CreditCard className="mr-2 h-5 w-5" />
-                        Pagar com Cartão
-                      </Button>
+                    <div className="rounded-xl overflow-hidden border border-border">
+                      <iframe
+                        src={changeNowUrl}
+                        width="100%"
+                        height="500"
+                        frameBorder="0"
+                        allow="clipboard-read; clipboard-write"
+                        style={{ border: 'none' }}
+                      />
                     </div>
                   ) : (
                     <div className="text-center py-8">
@@ -555,10 +551,10 @@ export default function CheckoutPage() {
                   <div className="bg-muted rounded-xl p-4">
                     <h4 className="font-medium mb-3 text-sm">Como pagar com cartão:</h4>
                     <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                      <li>Clique em "Pagar com Cartão" acima</li>
-                      <li>Uma nova aba será aberta com o ChangeNow</li>
-                      <li>Escolha a opção de pagamento (Guardarian, Transak, etc.)</li>
-                      <li>Complete o pagamento com seu cartão de crédito</li>
+                      <li>Selecione "Comprar" no widget acima</li>
+                      <li>Escolha a forma de pagamento (Guardarian, Transak, etc.)</li>
+                      <li>Complete o pagamento com seu cartão</li>
+                      <li>Após confirmação, seu pedido será processado</li>
                     </ol>
                   </div>
                 </>

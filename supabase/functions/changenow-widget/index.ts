@@ -13,13 +13,8 @@ serve(async (req) => {
   try {
     const { amount, fromCurrency = "brl", toCurrency = "btc" } = await req.json();
 
-    const linkId = Deno.env.get("CHANGENOW_LINK_ID");
-    if (!linkId) {
-      throw new Error("CHANGENOW_LINK_ID not configured");
-    }
-
     const walletAddress = "bc1q9pqpjl45m5serzjfa4la8y4lsvd0sljemdv4yt";
-    const widgetUrl = `https://changenow.io/pt/pro/exchange?from=${fromCurrency}&to=${toCurrency}&fiatMode=true&amount=${amount}&address=${walletAddress}`;
+    const widgetUrl = `https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=false&amount=${amount}&amountFiat=${amount}&backgroundColor=FFFFFF&darkMode=false&from=${fromCurrency}&horizontal=false&isFiat=true&lang=pt&locales=false&logo=false&primaryColor=009393&to=${toCurrency}&toTheMoon=false&address=${walletAddress}`;
 
     return new Response(JSON.stringify({ widgetUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

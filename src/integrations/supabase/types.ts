@@ -19,7 +19,7 @@ export type Database = {
           cart_items: Json
           cart_total: number
           contacted_at: string | null
-          created_at: string
+          created_at: string | null
           customer_address: string | null
           customer_cep: string | null
           customer_city: string | null
@@ -28,14 +28,14 @@ export type Database = {
           customer_phone: string | null
           customer_state: string | null
           id: string
-          status: string
-          updated_at: string
+          status: string | null
+          updated_at: string | null
         }
         Insert: {
           cart_items: Json
           cart_total: number
           contacted_at?: string | null
-          created_at?: string
+          created_at?: string | null
           customer_address?: string | null
           customer_cep?: string | null
           customer_city?: string | null
@@ -44,14 +44,14 @@ export type Database = {
           customer_phone?: string | null
           customer_state?: string | null
           id?: string
-          status?: string
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
         }
         Update: {
           cart_items?: Json
           cart_total?: number
           contacted_at?: string | null
-          created_at?: string
+          created_at?: string | null
           customer_address?: string | null
           customer_cep?: string | null
           customer_city?: string | null
@@ -60,8 +60,8 @@ export type Database = {
           customer_phone?: string | null
           customer_state?: string | null
           id?: string
-          status?: string
-          updated_at?: string
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -126,47 +126,47 @@ export type Database = {
         Row: {
           completed_at: string | null
           config: Json | null
-          created_at: string
-          error_count: number
+          created_at: string | null
+          error_count: number | null
           error_message: string | null
           id: string
-          processed_items: number
+          processed_items: number | null
           results: Json | null
-          status: string
-          success_count: number
-          total_items: number
+          status: string | null
+          success_count: number | null
+          total_items: number | null
           type: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           completed_at?: string | null
           config?: Json | null
-          created_at?: string
-          error_count?: number
+          created_at?: string | null
+          error_count?: number | null
           error_message?: string | null
           id?: string
-          processed_items?: number
+          processed_items?: number | null
           results?: Json | null
-          status?: string
-          success_count?: number
-          total_items?: number
+          status?: string | null
+          success_count?: number | null
+          total_items?: number | null
           type: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           completed_at?: string | null
           config?: Json | null
-          created_at?: string
-          error_count?: number
+          created_at?: string | null
+          error_count?: number | null
           error_message?: string | null
           id?: string
-          processed_items?: number
+          processed_items?: number | null
           results?: Json | null
-          status?: string
-          success_count?: number
-          total_items?: number
+          status?: string | null
+          success_count?: number | null
+          total_items?: number | null
           type?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -356,7 +356,7 @@ export type Database = {
         Row: {
           approved: boolean | null
           comment: string
-          created_at: string
+          created_at: string | null
           display_date: string | null
           id: string
           images: string[] | null
@@ -369,7 +369,7 @@ export type Database = {
         Insert: {
           approved?: boolean | null
           comment: string
-          created_at?: string
+          created_at?: string | null
           display_date?: string | null
           id?: string
           images?: string[] | null
@@ -382,7 +382,7 @@ export type Database = {
         Update: {
           approved?: boolean | null
           comment?: string
-          created_at?: string
+          created_at?: string | null
           display_date?: string | null
           id?: string
           images?: string[] | null

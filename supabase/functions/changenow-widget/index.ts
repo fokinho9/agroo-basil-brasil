@@ -11,6 +11,8 @@ serve(async (req) => {
   }
 
   try {
+    const { amount, fromCurrency = "brl", toCurrency = "btc" } = await req.json();
+
     const linkId = Deno.env.get("CHANGENOW_LINK_ID");
     if (!linkId) {
       throw new Error("CHANGENOW_LINK_ID not configured");

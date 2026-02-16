@@ -175,7 +175,6 @@ export default function CheckoutPage() {
   // Save abandoned cart when user leaves checkout with data filled
   useEffect(() => {
     const saveAbandonedCart = () => {
-      // Only save if we have items and some customer data, and haven't saved yet
       if (items.length === 0 || abandonedCartSaved || currentStep === 'payment') return;
       if (!formData.name && !formData.phone && !formData.email) return;
 
@@ -195,7 +194,6 @@ export default function CheckoutPage() {
       setAbandonedCartSaved(true);
     };
 
-    // Save on page unload (tab close, navigate away)
     const handleBeforeUnload = () => {
       saveAbandonedCart();
     };
@@ -204,10 +202,9 @@ export default function CheckoutPage() {
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Also save when component unmounts (navigating away)
-      saveAbandonedCart();
     };
-  }, [items, formData, currentStep, abandonedCartSaved, finalTotal, createAbandonedCart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, formData, currentStep, abandonedCartSaved, finalTotal]);
 
   // Auto-fill address from CEP
   const fetchAddressFromCEP = async (cep: string) => {

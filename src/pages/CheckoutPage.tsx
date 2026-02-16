@@ -128,7 +128,7 @@ export default function CheckoutPage() {
   const total = getTotal();
   const shipping = total > 200 ? 0 : 25;
   const finalTotal = total + shipping;
-  const isHighValue = finalTotal > 500;
+  const isHighValue = false;
 
   // Get store phone for WhatsApp
   const storePhone = settings?.store?.phone?.replace(/\D/g, '') || '5511972238165';

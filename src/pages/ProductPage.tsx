@@ -162,7 +162,7 @@ export default function ProductPage() {
   }
   const images = product.images?.length > 0 ? product.images : [product.image_url || '/placeholder.svg'];
   const isPriceOnRequest = product.price === 0;
-  const isHighValue = product.price > 500 || isPriceOnRequest;
+  const isHighValue = isPriceOnRequest;
   const hasDiscount = product.original_price && product.original_price > product.price && !isPriceOnRequest;
   const discountPercent = hasDiscount ? Math.round((product.original_price! - product.price) / product.original_price! * 100) : 0;
   const averageRating = reviews && reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;

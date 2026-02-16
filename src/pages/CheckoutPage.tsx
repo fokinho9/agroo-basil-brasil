@@ -95,7 +95,7 @@ export default function CheckoutPage() {
   const createAbandonedCart = useCreateAbandonedCart();
   
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('cart');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [pixCode, setPixCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'checking' | 'paid' | 'failed'>('pending');
@@ -140,37 +140,7 @@ export default function CheckoutPage() {
     }
   }, [currentStep, paymentMethod]);
 
-  // Check payment status periodically (only for PIX)
-  useEffect(() => {
-    if (currentStep !== 'payment' || !transactionId || paymentStatus === 'paid' || paymentMethod !== 'pix') return;
-
-    const checkStatus = async () => {
-      try {
-        setPaymentStatus('checking');
-        const { data, error } = await supabase.functions.invoke('streetpay-check-status', {
-          body: { transactionId, orderId },
-        });
-
-        if (error) throw error;
-
-        if (data.isPaid) {
-          setPaymentStatus('paid');
-          clearCart();
-          toast.success('Pagamento confirmado!');
-        } else {
-          setPaymentStatus('pending');
-        }
-      } catch (error) {
-        console.error('Error checking status:', error);
-        setPaymentStatus('pending');
-      }
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 5000);
-
-    return () => clearInterval(interval);
-  }, [currentStep, transactionId, orderId, paymentStatus, clearCart, paymentMethod]);
+  // PIX check status disabled (StreetPay desativado)
 
   // Save abandoned cart when user leaves checkout with data filled
   useEffect(() => {
@@ -361,32 +331,7 @@ export default function CheckoutPage() {
       setCurrentStep('payment');
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Only create PIX for PIX payment method
-      if (paymentMethod === 'pix') {
-        const { data, error } = await supabase.functions.invoke('streetpay-create-pix', {
-          body: {
-            orderId: order.id,
-            amount: finalTotal,
-            customer: {
-              name: formData.name,
-              email: formData.email,
-              phone: formData.phone,
-            },
-            items: items.map((item) => ({
-              name: item.product.name,
-              quantity: item.quantity,
-              price: item.product.price,
-            })),
-          },
-        });
-
-        if (error) throw error;
-
-        if (data.pixCode) {
-          setPixCode(data.pixCode);
-          setTransactionId(data.transactionId);
-        }
-      }
+      // StreetPay PIX desativado temporariamente
     } catch (error) {
       console.error('Error creating order:', error);
       toast.error('Erro ao processar pedido. Tente novamente.');
@@ -510,16 +455,7 @@ export default function CheckoutPage() {
                   onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
                   className="flex flex-col gap-3"
                 >
-                  {/* PIX - only show if total <= 500 */}
-                  {!isHighValue && (
-                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
-                      <RadioGroupItem value="pix" id="pix" />
-                      <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <Banknote className="h-5 w-5 text-primary" />
-                        <span>PIX</span>
-                      </Label>
-                    </div>
-                  )}
+                  {/* PIX desativado temporariamente */}
                   
                   {/* Card - always show */}
                   <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
@@ -530,16 +466,14 @@ export default function CheckoutPage() {
                     </Label>
                   </div>
 
-                  {/* WhatsApp - only show for high value orders */}
-                  {isHighValue && (
-                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'whatsapp' ? 'border-success bg-success/5' : 'border-muted'}`}>
-                      <RadioGroupItem value="whatsapp" id="whatsapp" />
-                      <Label htmlFor="whatsapp" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <MessageCircle className="h-5 w-5 text-success" />
-                        <span>Finalizar via WhatsApp</span>
-                      </Label>
-                    </div>
-                  )}
+                  {/* WhatsApp */}
+                  <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'whatsapp' ? 'border-success bg-success/5' : 'border-muted'}`}>
+                    <RadioGroupItem value="whatsapp" id="whatsapp" />
+                    <Label htmlFor="whatsapp" className="flex items-center gap-2 cursor-pointer flex-1">
+                      <MessageCircle className="h-5 w-5 text-success" />
+                      <span>Finalizar via WhatsApp</span>
+                    </Label>
+                  </div>
                 </RadioGroup>
               </CardContent>
             </Card>
@@ -552,13 +486,9 @@ export default function CheckoutPage() {
                   <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Check className="h-10 w-10 text-success" />
                   </div>
-                  <CardTitle className="text-2xl text-success">
-                    {paymentMethod === 'pix' ? 'Pagamento Confirmado!' : 'Pedido Registrado!'}
-                  </CardTitle>
+                  <CardTitle className="text-2xl text-success">Pedido Registrado!</CardTitle>
                   <p className="text-muted-foreground">
-                    {paymentMethod === 'pix' 
-                      ? 'Seu pedido foi processado com sucesso' 
-                      : 'Aguarde a confirmação do pagamento'}
+                    Aguarde a confirmação do pagamento
                   </p>
                 </>
               ) : paymentMethod === 'whatsapp' ? (
@@ -574,76 +504,17 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    {paymentMethod === 'pix' ? (
-                      <Banknote className="h-10 w-10 text-primary" />
-                    ) : (
-                      <CreditCard className="h-10 w-10 text-primary" />
-                    )}
+                    <CreditCard className="h-10 w-10 text-primary" />
                   </div>
-                  <CardTitle className="text-xl md:text-2xl">
-                    {paymentMethod === 'pix' ? 'Pague via PIX' : 'Dados do Cartão'}
-                  </CardTitle>
+                  <CardTitle className="text-xl md:text-2xl">Pagamento por Cartão</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {paymentMethod === 'pix' 
-                      ? 'Copie o código e pague no app do seu banco' 
-                      : 'Preencha os dados do seu cartão de crédito'}
+                    Preencha os dados no widget abaixo
                   </p>
                 </>
               )}
             </CardHeader>
             <CardContent className="space-y-6">
-              {paymentStatus !== 'paid' && paymentMethod === 'pix' && (
-                <>
-                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Valor total</p>
-                    <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
-                  </div>
-
-                  {pixCode ? (
-                    <>
-                      <div>
-                        <Label className="text-sm font-medium">Código PIX (Copia e Cola)</Label>
-                        <div className="flex gap-2 mt-2">
-                          <Input value={pixCode} readOnly className="font-mono text-xs md:text-sm" />
-                          <Button onClick={handleCopyPix} className="shrink-0 gap-2">
-                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                            <span className="hidden sm:inline">Copiar</span>
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="bg-muted rounded-xl p-4">
-                        <h4 className="font-medium mb-3 text-sm">Como pagar:</h4>
-                        <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                          <li>Copie o código PIX acima</li>
-                          <li>Abra o app do seu banco</li>
-                          <li>Escolha PIX Copia e Cola</li>
-                          <li>Cole o código e confirme</li>
-                        </ol>
-                      </div>
-
-                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                        {paymentStatus === 'checking' ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            <span>Verificando pagamento...</span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                            <span>Aguardando pagamento</span>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="ml-2">Gerando código PIX...</span>
-                    </div>
-                  )}
-                </>
-              )}
+              {/* PIX UI desativado temporariamente */}
 
               {paymentStatus !== 'paid' && paymentMethod === 'card' && (
                 <>

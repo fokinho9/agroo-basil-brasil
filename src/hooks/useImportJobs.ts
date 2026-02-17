@@ -38,7 +38,8 @@ export function useActiveImportJob(type: string) {
   return useQuery({
     queryKey: ['import-job-active', type],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First try to find a running/pending job
+      const { data: activeJob, error: activeError } = await supabase
         .from('import_jobs')
         .select('*')
         .eq('type', type)
@@ -47,10 +48,28 @@ export function useActiveImportJob(type: string) {
         .limit(1)
         .maybeSingle();
       
-      if (error) throw error;
-      return data as ImportJob | null;
+      if (activeError) throw activeError;
+      if (activeJob) return activeJob as ImportJob;
+
+      // If no active job, return the most recent one (completed/failed)
+      const { data: latestJob, error: latestError } = await supabase
+        .from('import_jobs')
+        .select('*')
+        .eq('type', type)
+        .in('status', ['completed', 'failed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (latestError) throw latestError;
+      return latestJob as ImportJob | null;
     },
-    refetchInterval: 2000, // Poll every 2 seconds while job is active
+    refetchInterval: (query) => {
+      const job = query.state.data;
+      // Poll fast while running, stop when done
+      if (job?.status === 'pending' || job?.status === 'running') return 1500;
+      return false;
+    },
   });
 }
 

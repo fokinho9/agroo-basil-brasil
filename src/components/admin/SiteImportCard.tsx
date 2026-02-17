@@ -174,6 +174,7 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
       status: 'failed',
       error_message: 'Cancelado pelo usuário',
     }).eq('id', activeJob.id);
+    setDismissedJobId(activeJob.id);
     refetchJob();
     toast.info('Importação cancelada');
   };

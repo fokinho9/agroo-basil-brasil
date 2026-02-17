@@ -20,6 +20,7 @@ const productSchema = {
     categories: { type: "array", items: { type: "string" } },
     colors: { type: "array", items: { type: "string" } },
     sizes: { type: "array", items: { type: "string" } },
+    current_color: { type: ["string", "null"] },
   },
   required: ["title", "price", "images"],
 };
@@ -32,18 +33,64 @@ const SCRAPE_PROMPT =
   "Extraia TODAS as URLs de imagem do produto (não ícones ou logos do site). " +
   "SKU se houver, estoque se houver. " +
   "Em 'categories' extraia a hierarquia de categorias/breadcrumb do produto (ex: ['Selaria', 'Mantas']). " +
-  "Em 'colors' extraia todas as cores/opções de cor disponíveis para o produto. " +
-  "Em 'sizes' extraia todos os tamanhos disponíveis para o produto (ex: ['P', 'M', 'G', 'GG'] ou ['34', '36', '38']).";
+  "Em 'colors' extraia todas as cores/opções de cor disponíveis para o produto (listadas na página como variações). " +
+  "Em 'sizes' extraia todos os tamanhos disponíveis para o produto (ex: ['P', 'M', 'G', 'GG'] ou ['34', '36', '38']). " +
+  "Em 'current_color' coloque a cor específica DESTA variação do produto que está sendo exibida nesta página (ex: 'Vermelho', 'Azul').";
 
 const MAX_RUNTIME_MS = 50000;
+
+const KNOWN_COLORS = [
+  'preto', 'branco', 'vermelho', 'azul', 'verde', 'amarelo', 'roxo', 'rosa',
+  'laranja', 'marrom', 'bege', 'cinza', 'dourado', 'prata', 'caramelo',
+  'vinho', 'bordo', 'bordô', 'nude', 'creme', 'areia', 'terracota',
+  'coral', 'salmão', 'salmon', 'turquesa', 'lilás', 'lilas', 'violeta',
+  'mostarda', 'oliva', 'caqui', 'grafite', 'gelo', 'off white', 'off-white',
+  'chocolate', 'mel', 'camel', 'camelo', 'ferrugem', 'ocre', 'petróleo',
+  'petroleo', 'esmeralda', 'safira', 'rubi', 'âmbar', 'ambar',
+  'black', 'white', 'red', 'blue', 'green', 'yellow', 'purple', 'pink',
+  'orange', 'brown', 'gray', 'grey', 'gold', 'silver',
+];
 
 interface ProductLog {
   url: string;
   name: string | null;
   price: number | null;
-  status: 'success' | 'error' | 'skipped';
+  status: 'success' | 'error' | 'skipped' | 'merged';
   productId: string | null;
   message: string;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function getBaseName(title: string): string {
+  let base = title.trim();
+  const normalized = base.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // Sort colors by length desc so longer matches first (e.g. "off white" before "white")
+  const sorted = [...KNOWN_COLORS].sort((a, b) => b.length - a.length);
+
+  for (const color of sorted) {
+    const colorNorm = color.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    // Match color at end or surrounded by spaces/hyphens
+    const regex = new RegExp(`[\\s\\-]+${colorNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$|-|\\d)*$`, 'i');
+    if (regex.test(normalized)) {
+      // Remove from original string at the same position
+      const idx = normalized.search(regex);
+      if (idx > 0) {
+        base = base.substring(0, idx).trim().replace(/[-\s]+$/, '');
+      }
+      break;
+    }
+  }
+
+  return base;
 }
 
 async function scrapeProductJson(url: string, apiKey: string) {
@@ -76,15 +123,6 @@ async function scrapeProductJson(url: string, apiKey: string) {
   return { data: extracted };
 }
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
-
 async function findOrCreateCategory(
   supabase: any,
   categoryNames: string[],
@@ -92,17 +130,15 @@ async function findOrCreateCategory(
 ): Promise<string | null> {
   if (!categoryNames || categoryNames.length === 0) return null;
 
-  // Try to find the most specific (last) category first
   for (let i = categoryNames.length - 1; i >= 0; i--) {
     const name = categoryNames[i].trim();
-    if (!name) continue;
+    if (!name || name.toLowerCase() === 'home') continue;
 
     const cacheKey = name.toLowerCase();
     if (categoriesCache.has(cacheKey)) {
       return categoriesCache.get(cacheKey)!;
     }
 
-    // Search by name (case insensitive)
     const { data: existing } = await supabase
       .from('categories')
       .select('id')
@@ -115,13 +151,12 @@ async function findOrCreateCategory(
     }
   }
 
-  // If no category found, create the hierarchy
   let parentId: string | null = null;
   let lastId: string | null = null;
 
   for (const name of categoryNames) {
     const trimmed = name.trim();
-    if (!trimmed) continue;
+    if (!trimmed || trimmed.toLowerCase() === 'home') continue;
 
     const cacheKey = trimmed.toLowerCase();
     if (categoriesCache.has(cacheKey)) {
@@ -130,7 +165,6 @@ async function findOrCreateCategory(
       continue;
     }
 
-    // Check if exists
     const { data: existing } = await supabase
       .from('categories')
       .select('id')
@@ -144,7 +178,6 @@ async function findOrCreateCategory(
       continue;
     }
 
-    // Create it
     const slug = slugify(trimmed);
     const { data: created, error } = await supabase
       .from('categories')
@@ -160,32 +193,10 @@ async function findOrCreateCategory(
     parentId = created.id;
     lastId = created.id;
     categoriesCache.set(cacheKey, created.id);
-    console.log(`📁 Created category: ${trimmed} (parent: ${parentId})`);
+    console.log(`📁 Created category: ${trimmed}`);
   }
 
   return lastId;
-}
-
-function buildVariants(colors: string[], sizes: string[]): any[] {
-  const variants: any[] = [];
-
-  if (colors.length > 0 && sizes.length > 0) {
-    for (const color of colors) {
-      for (const size of sizes) {
-        variants.push({ color, size });
-      }
-    }
-  } else if (colors.length > 0) {
-    for (const color of colors) {
-      variants.push({ color });
-    }
-  } else if (sizes.length > 0) {
-    for (const size of sizes) {
-      variants.push({ size });
-    }
-  }
-
-  return variants;
 }
 
 serve(async (req) => {
@@ -251,7 +262,7 @@ serve(async (req) => {
         await supabase.from('import_jobs').update({
           status: 'failed',
           error_message: 'Failed to map site',
-          results: { skipped: 0, logs: [{ url: config.siteUrl, name: null, price: null, status: 'error', productId: null, message: 'Falha ao mapear o site' }] },
+          results: { skipped: 0, merged: 0, logs: [{ url: config.siteUrl, name: null, price: null, status: 'error', productId: null, message: 'Falha ao mapear o site' }] },
         }).eq('id', jobId);
         return new Response(JSON.stringify({ error: 'Failed to map site' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -272,7 +283,7 @@ serve(async (req) => {
       if (productUrls.length === 0) {
         await supabase.from('import_jobs').update({
           status: 'completed', total_items: 0, processed_items: 0,
-          results: { skipped: 0, logs: [] },
+          results: { skipped: 0, merged: 0, logs: [] },
           completed_at: new Date().toISOString(),
         }).eq('id', jobId);
         return new Response(JSON.stringify({ success: true, processed: 0 }), {
@@ -295,16 +306,19 @@ serve(async (req) => {
     let success = job.success_count || 0;
     let errors = job.error_count || 0;
     let skipped = (job.results as any)?.skipped || 0;
+    let merged = (job.results as any)?.merged || 0;
 
     const startTime = Date.now();
     const categoriesCache = new Map<string, string>();
+    // Cache: baseName -> productId for merging variants
+    const baseNameCache = new Map<string, string>();
 
     const updateJob = async () => {
       await supabase.from('import_jobs').update({
         processed_items: processed,
         success_count: success,
         error_count: errors,
-        results: { skipped, logs },
+        results: { skipped, merged, logs },
       }).eq('id', jobId);
     };
 
@@ -334,7 +348,7 @@ serve(async (req) => {
       }
 
       console.log(`[${processed + 1}/${productUrls.length}] Scraping: ${url}`);
-      
+
       try {
         const result = await scrapeProductJson(url, firecrawlApiKey);
 
@@ -345,7 +359,7 @@ serve(async (req) => {
           await supabase.from('import_jobs').update({
             status: 'failed', error_message: 'Créditos Firecrawl esgotados',
             processed_items: processed, success_count: success, error_count: errors,
-            results: { skipped, logs },
+            results: { skipped, merged, logs },
           }).eq('id', jobId);
           return new Response(JSON.stringify({ error: 'credits_exhausted' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -378,57 +392,155 @@ serve(async (req) => {
           continue;
         }
 
-        // Check duplicate by name
-        const { data: existing } = await supabase
-          .from('products').select('id').ilike('name', name).limit(1);
-
-        if (existing && existing.length > 0) {
-          logs.push({ url, name, price: product.price, status: 'skipped', productId: existing[0].id, message: 'Produto duplicado' });
-          skipped++;
-          processed++;
-          await updateJob();
-          continue;
-        }
-
         const images = (product.images || []).filter((img: string) => img?.startsWith('http'));
-        const originalPrice = product.original_price && product.original_price > product.price
-          ? product.original_price : null;
+        const currentColor = product.current_color?.trim() || null;
+        const baseName = getBaseName(name);
+        const baseNameKey = baseName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-        // Auto-detect category from scraped data
-        let categoryId = forcedCategoryId || null;
-        if (!categoryId && product.categories && product.categories.length > 0) {
-          categoryId = await findOrCreateCategory(supabase, product.categories, categoriesCache);
+        // Check if we already have a product with this base name (color variant)
+        let existingProductId = baseNameCache.get(baseNameKey) || null;
+
+        if (!existingProductId) {
+          // Search DB for existing product with similar base name
+          const { data: existing } = await supabase
+            .from('products').select('id, name').ilike('name', `${baseName}%`).limit(5);
+
+          if (existing && existing.length > 0) {
+            // Find one whose base name matches
+            for (const ex of existing) {
+              const exBase = getBaseName(ex.name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+              if (exBase === baseNameKey) {
+                existingProductId = ex.id;
+                baseNameCache.set(baseNameKey, ex.id);
+                break;
+              }
+            }
+          }
         }
 
-        // Build variants from colors and sizes
-        const colors = (product.colors || []).filter((c: string) => c && c.trim());
-        const sizes = (product.sizes || []).filter((s: string) => s && s.trim());
-        const variants = buildVariants(colors, sizes);
+        if (existingProductId) {
+          // MERGE: add color variant and images to existing product
+          const { data: existingProduct } = await supabase
+            .from('products')
+            .select('variants, images, image_url')
+            .eq('id', existingProductId)
+            .single();
 
-        const { data: inserted, error: insertError } = await supabase.from('products').insert({
-          name: name.length > 150 ? name.substring(0, 147) + '...' : name,
-          description: product.description || null,
-          price: product.price,
-          original_price: originalPrice,
-          image_url: images.length > 0 ? images[0] : null,
-          images: images.length > 0 ? images : null,
-          category_id: categoryId,
-          stock: product.stock ?? 10,
-          active: true,
-          featured: false,
-          variants: variants.length > 0 ? variants : [],
-          source_url: url,
-        }).select('id').single();
+          if (existingProduct) {
+            const existingVariants: any[] = existingProduct.variants || [];
+            const existingImages: string[] = existingProduct.images || [];
 
-        if (insertError) {
-          console.error(`Insert error for ${name}:`, insertError.message);
-          logs.push({ url, name, price: product.price, status: 'error', productId: null, message: `Erro ao inserir: ${insertError.message}` });
-          errors++;
+            // Add new color variant if we have a color
+            if (currentColor) {
+              const colorExists = existingVariants.some((v: any) =>
+                v.color?.toLowerCase() === currentColor.toLowerCase()
+              );
+              if (!colorExists) {
+                // Add variant with color and its images
+                existingVariants.push({
+                  color: currentColor,
+                  image_url: images[0] || null,
+                });
+              }
+            }
+
+            // Merge images (deduplicate)
+            const allImages = [...existingImages];
+            for (const img of images) {
+              if (!allImages.includes(img)) {
+                allImages.push(img);
+              }
+            }
+
+            // Also extract sizes from this page and merge
+            const sizes = (product.sizes || []).filter((s: string) => s && s.trim());
+            if (sizes.length > 0) {
+              const existingSizes = new Set(existingVariants.filter((v: any) => v.size).map((v: any) => v.size));
+              for (const size of sizes) {
+                if (!existingSizes.has(size)) {
+                  existingVariants.push({ size });
+                  existingSizes.add(size);
+                }
+              }
+            }
+
+            await supabase.from('products').update({
+              variants: existingVariants,
+              images: allImages,
+            }).eq('id', existingProductId);
+
+            console.log(`🔗 Merged variant "${currentColor || 'unknown'}" into: ${baseName}`);
+            logs.push({ url, name, price: product.price, status: 'merged', productId: existingProductId, message: `Variante "${currentColor || ''}" mesclada ao produto base` });
+            merged++;
+          }
         } else {
-          const variantInfo = variants.length > 0 ? ` | ${colors.length} cores, ${sizes.length} tamanhos` : '';
-          console.log(`✅ Imported: ${name} - R$${product.price}${variantInfo}`);
-          logs.push({ url, name, price: product.price, status: 'success', productId: inserted?.id || null, message: `Importado com sucesso${variantInfo}` });
-          success++;
+          // Check exact duplicate by name
+          const { data: exactDup } = await supabase
+            .from('products').select('id').ilike('name', name).limit(1);
+
+          if (exactDup && exactDup.length > 0) {
+            logs.push({ url, name, price: product.price, status: 'skipped', productId: exactDup[0].id, message: 'Produto duplicado' });
+            skipped++;
+            processed++;
+            await updateJob();
+            continue;
+          }
+
+          const originalPrice = product.original_price && product.original_price > product.price
+            ? product.original_price : null;
+
+          let categoryId = forcedCategoryId || null;
+          if (!categoryId && product.categories && product.categories.length > 0) {
+            const filteredCats = product.categories.filter((c: string) => c.toLowerCase() !== 'home');
+            if (filteredCats.length > 0) {
+              categoryId = await findOrCreateCategory(supabase, filteredCats, categoriesCache);
+            }
+          }
+
+          // Build initial variants
+          const colors = (product.colors || []).filter((c: string) => c && c.trim());
+          const sizes = (product.sizes || []).filter((s: string) => s && s.trim());
+          const variants: any[] = [];
+
+          // Add current color as variant with image
+          if (currentColor) {
+            variants.push({ color: currentColor, image_url: images[0] || null });
+          }
+
+          // Add sizes
+          for (const size of sizes) {
+            variants.push({ size });
+          }
+
+          // Use base name (without color) as product name
+          const productName = baseName.length > 3 ? baseName : name;
+
+          const { data: inserted, error: insertError } = await supabase.from('products').insert({
+            name: productName.length > 150 ? productName.substring(0, 147) + '...' : productName,
+            description: product.description || null,
+            price: product.price,
+            original_price: originalPrice,
+            image_url: images.length > 0 ? images[0] : null,
+            images: images.length > 0 ? images : null,
+            category_id: categoryId,
+            stock: product.stock ?? 10,
+            active: true,
+            featured: false,
+            variants: variants,
+            source_url: url,
+          }).select('id').single();
+
+          if (insertError) {
+            console.error(`Insert error for ${name}:`, insertError.message);
+            logs.push({ url, name, price: product.price, status: 'error', productId: null, message: `Erro ao inserir: ${insertError.message}` });
+            errors++;
+          } else {
+            baseNameCache.set(baseNameKey, inserted.id);
+            const variantInfo = variants.length > 0 ? ` | ${variants.filter(v => v.color).length} cores, ${variants.filter(v => v.size).length} tamanhos` : '';
+            console.log(`✅ Imported: ${productName} - R$${product.price}${variantInfo}`);
+            logs.push({ url, name: productName, price: product.price, status: 'success', productId: inserted?.id || null, message: `Importado com sucesso${variantInfo}` });
+            success++;
+          }
         }
       } catch (error) {
         console.error(`Error processing ${url}:`, error);
@@ -459,15 +571,14 @@ serve(async (req) => {
       });
     }
 
-    // All done!
     await supabase.from('import_jobs').update({
       status: 'completed', processed_items: processed, success_count: success,
-      error_count: errors, results: { skipped, logs }, completed_at: new Date().toISOString(),
+      error_count: errors, results: { skipped, merged, logs }, completed_at: new Date().toISOString(),
     }).eq('id', jobId);
 
-    console.log(`Import complete: ${success} imported, ${errors} errors, ${skipped} skipped`);
+    console.log(`Import complete: ${success} imported, ${merged} merged, ${errors} errors, ${skipped} skipped`);
 
-    return new Response(JSON.stringify({ success: true, processed, successCount: success, errorCount: errors, skipped }), {
+    return new Response(JSON.stringify({ success: true, processed, successCount: success, errorCount: errors, skipped, merged }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

@@ -39,12 +39,14 @@ async function scrapeProductJson(url: string, apiKey: string) {
     },
     body: JSON.stringify({
       url,
-      formats: [
-        { type: 'json', schema: productSchema, prompt: SCRAPE_PROMPT },
-      ],
+      formats: ['json'],
+      jsonOptions: {
+        schema: productSchema,
+        prompt: SCRAPE_PROMPT,
+      },
       onlyMainContent: true,
       timeout: 30000,
-      waitFor: 3000,
+      waitFor: 2000,
     }),
   });
 
@@ -55,7 +57,8 @@ async function scrapeProductJson(url: string, apiKey: string) {
   if (!response.ok) return { error: `http_${response.status}` };
 
   const data = await response.json();
-  const extracted = data?.data?.json || data?.json || null;
+  console.log(`Scrape data keys: ${JSON.stringify(Object.keys(data?.data || data || {}))}`);
+  const extracted = data?.data?.extract || data?.extract || data?.data?.json || data?.json || null;
   return { data: extracted };
 }
 
@@ -119,10 +122,11 @@ serve(async (req) => {
         });
       }
 
-      productUrls = (mapData.links || []).filter((url: string) =>
+      const allProductUrls = (mapData.links || []).filter((url: string) =>
         url.includes('/produto/') && !url.includes('/marca/')
-      ).slice(0, 10); // Limit to 10 products per batch
-      console.log(`Found ${productUrls.length} product URLs (limited to 10)`);
+      );
+      productUrls = allProductUrls.slice(0, 3); // Limit to 3 products per batch to avoid timeout
+      console.log(`Found ${allProductUrls.length} total product URLs, processing first 3`);
 
       await supabase.from('import_jobs').update({
         total_items: productUrls.length,
@@ -216,7 +220,7 @@ serve(async (req) => {
         }).eq('id', jobId);
       }
 
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 500));
     }
 
     await supabase.from('import_jobs').update({

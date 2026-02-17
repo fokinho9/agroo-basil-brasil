@@ -66,8 +66,8 @@ export function useActiveImportJob(type: string) {
     },
     refetchInterval: (query) => {
       const job = query.state.data;
-      // Poll fast while running, stop when done
-      if (job?.status === 'pending' || job?.status === 'running') return 1500;
+      // Poll while running, slower interval to reduce CPU load
+      if (job?.status === 'pending' || job?.status === 'running') return 5000;
       return false;
     },
   });

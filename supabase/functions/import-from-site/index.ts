@@ -91,6 +91,32 @@ function parseColorVariants(html: string, baseUrl: string): ColorVariant[] {
   return variants;
 }
 
+// Parse sizes from the radio variation HTML
+function parseSizesFromHtml(html: string): string[] {
+  const sizes: string[] = [];
+  const sizeSection = html.match(/data-variation-name="Tamanho"[\s\S]*?<\/div>/i);
+  if (!sizeSection) return sizes;
+
+  // Match each label span with size value, skip out-of-stock
+  const regex = /<label[^>]*class="[^"]*label_radio[^"]*"[^>]*>\s*<span>\s*(\d+|[A-Z]+)\s*<\/span>\s*<\/label>/gi;
+  let match;
+  const section = sizeSection[0];
+  
+  // Better approach: match all radio inputs and their labels
+  const radioRegex = /<label[^>]*class="([^"]*)"[^>]*>\s*<span>\s*([^<]+?)\s*<\/span>\s*<\/label>/gi;
+  while ((match = radioRegex.exec(html)) !== null) {
+    const classes = match[1];
+    const size = match[2].trim();
+    // Only include if it's in a size/tamanho section and is a valid size
+    if (size && /^\d{1,3}$|^[XSMLGP]{1,3}$|^GG$/i.test(size)) {
+      sizes.push(size);
+    }
+  }
+  
+  // Deduplicate
+  return [...new Set(sizes)];
+}
+
 // Parse breadcrumb categories from HTML
 function parseBreadcrumbFromHtml(html: string): string[] {
   const categories: string[] = [];
@@ -162,6 +188,13 @@ async function scrapeProductJson(url: string, apiKey: string) {
   if (extracted && colorVariants.length > 0) {
     extracted._colorVariants = colorVariants;
     console.log(`🎨 Found ${colorVariants.length} color variants from HTML`);
+  }
+
+  // Parse sizes from HTML (more reliable than LLM)
+  const htmlSizes = parseSizesFromHtml(rawHtml);
+  if (extracted && htmlSizes.length > 0) {
+    extracted.sizes = htmlSizes;
+    console.log(`📏 Sizes from HTML: ${htmlSizes.join(', ')}`);
   }
 
   return { data: extracted };

@@ -6,6 +6,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { FloatingButtonProvider } from "@/contexts/FloatingButtonContext";
 import { Layout } from "@/components/layout/Layout";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 
 import HomePage from "@/pages/HomePage";
 import ProductsPage from "@/pages/ProductsPage";
@@ -28,6 +29,7 @@ import AdminBannersPage from "@/pages/admin/AdminBannersPage";
 import AdminSettingsPage from "@/pages/admin/AdminSettingsPage";
 import AdminImportPage from "@/pages/admin/AdminImportPage";
 import AdminAbandonedCartsPage from "@/pages/admin/AdminAbandonedCartsPage";
+import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,7 @@ const App = () => (
           <Toaster />
           <BrowserRouter>
             <ScrollToTop />
+            <PageViewTracker />
             <Routes>
               <Route path="/" element={<Layout><HomePage /></Layout>} />
               <Route path="/produtos" element={<Layout><ProductsPage /></Layout>} />
@@ -62,6 +65,7 @@ const App = () => (
               <Route path="/fokinho/carrinhos" element={<AdminAbandonedCartsPage />} />
               <Route path="/fokinho/banners" element={<AdminBannersPage />} />
               <Route path="/fokinho/configuracoes" element={<AdminSettingsPage />} />
+              <Route path="/fokinho/analytics" element={<AdminAnalyticsPage />} />
               <Route path="/fokinho/importar" element={<AdminImportPage />} />
               
               

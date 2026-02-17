@@ -15,6 +15,7 @@ import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { FloatingBuyButton } from '@/components/products/FloatingBuyButton';
 import { ProductStoreSection } from '@/components/products/ProductStoreSection';
 import { ProductVariantSelector } from '@/components/products/ProductVariantSelector';
+import { ProductAddons, ProductAddon } from '@/components/products/ProductAddons';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -125,6 +126,7 @@ export default function ProductPage() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [addonValues, setAddonValues] = useState<Record<string, string>>({});
 
   // Auto-generate reviews if none exist
   useEffect(() => {
@@ -271,21 +273,43 @@ export default function ProductPage() {
           </div>
 
           {/* Variant Selection (Colors & Sizes) */}
-          {product.variants && product.variants.length > 0 && (
-            <ProductVariantSelector
-              variants={product.variants}
-              selectedColor={selectedColor}
-              selectedSize={selectedSize}
-              onColorChange={(color, imageUrl) => {
-                setSelectedColor(color);
-                if (imageUrl) {
-                  const idx = images.findIndex(img => img === imageUrl);
-                  if (idx >= 0) setCurrentImageIndex(idx);
-                }
-              }}
-              onSizeChange={setSelectedSize}
-            />
-          )}
+          {product.variants && (() => {
+            const variantsArray = Array.isArray(product.variants) ? product.variants : [];
+            const regularVariants = variantsArray.filter((v: any) => !v.addon);
+            const addons: ProductAddon[] = variantsArray.filter((v: any) => v.addon).map((v: any) => ({
+              id: v.id,
+              label: v.label,
+              type: v.type,
+              required: v.required,
+              options: v.options,
+            }));
+            return (
+              <>
+                {regularVariants.length > 0 && (
+                  <ProductVariantSelector
+                    variants={regularVariants}
+                    selectedColor={selectedColor}
+                    selectedSize={selectedSize}
+                    onColorChange={(color, imageUrl) => {
+                      setSelectedColor(color);
+                      if (imageUrl) {
+                        const idx = images.findIndex(img => img === imageUrl);
+                        if (idx >= 0) setCurrentImageIndex(idx);
+                      }
+                    }}
+                    onSizeChange={setSelectedSize}
+                  />
+                )}
+                {addons.length > 0 && (
+                  <ProductAddons
+                    addons={addons}
+                    values={addonValues}
+                    onChange={(id, val) => setAddonValues(prev => ({ ...prev, [id]: val }))}
+                  />
+                )}
+              </>
+            );
+          })()}
 
           {/* Scarcity - Low Stock Warning */}
           {!isPriceOnRequest && <div className="flex items-center gap-2 p-3 rounded-lg border border-primary bg-primary/10">

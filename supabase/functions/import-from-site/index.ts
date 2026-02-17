@@ -117,6 +117,54 @@ function parseSizesFromHtml(html: string): string[] {
   return [...new Set(sizes)];
 }
 
+// Parse product addons/complementos from HTML
+interface ProductAddon {
+  id: string;
+  label: string;
+  type: 'text' | 'select';
+  required: boolean;
+  options?: string[];
+}
+
+function parseAddonsFromHtml(html: string): ProductAddon[] {
+  const addons: ProductAddon[] = [];
+  const complementsMatch = html.match(/id="js-product_addons[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i);
+  if (!complementsMatch) return addons;
+
+  const section = complementsMatch[1];
+  // Match each complements-content block
+  const blockRegex = /<div\s+class="complements-content">([\s\S]*?)<\/div>/gi;
+  let block;
+
+  while ((block = blockRegex.exec(section)) !== null) {
+    const content = block[1];
+    // Extract label
+    const labelMatch = content.match(/addon-id="(\d+)"[^>]*addon-price="([^"]*)"[^>]*data-addon-is-optional="([^"]*)"[^>]*class="[^"]*">\s*([\s\S]*?)\s*<\/label>/i);
+    if (!labelMatch) continue;
+
+    const addonId = labelMatch[1];
+    const isOptional = labelMatch[3].toLowerCase() === 'true';
+    const label = labelMatch[4].replace(/\*$/, '').trim();
+
+    // Check if it's a select or text input
+    const selectMatch = content.match(/<select[^>]*id="addon-select-(\d+)"[^>]*>([\s\S]*?)<\/select>/i);
+    if (selectMatch) {
+      const optionsHtml = selectMatch[2];
+      const options: string[] = [];
+      const optRegex = /<option\s+value="([^"]*)"[^>]*>[^<]*<\/option>/gi;
+      let opt;
+      while ((opt = optRegex.exec(optionsHtml)) !== null) {
+        options.push(opt[1].trim());
+      }
+      addons.push({ id: addonId, label, type: 'select', required: !isOptional, options });
+    } else {
+      addons.push({ id: addonId, label, type: 'text', required: !isOptional });
+    }
+  }
+
+  return addons;
+}
+
 // Parse breadcrumb categories from HTML
 function parseBreadcrumbFromHtml(html: string): string[] {
   const categories: string[] = [];
@@ -195,6 +243,13 @@ async function scrapeProductJson(url: string, apiKey: string) {
   if (extracted && htmlSizes.length > 0) {
     extracted.sizes = htmlSizes;
     console.log(`📏 Sizes from HTML: ${htmlSizes.join(', ')}`);
+  }
+
+  // Parse addons/complementos from HTML
+  const addons = parseAddonsFromHtml(rawHtml);
+  if (extracted && addons.length > 0) {
+    extracted._addons = addons;
+    console.log(`🎁 Found ${addons.length} addons: ${addons.map(a => a.label).join(', ')}`);
   }
 
   return { data: extracted };
@@ -406,6 +461,7 @@ serve(async (req) => {
 
         // Get color variants parsed from HTML
         const colorVariants: ColorVariant[] = product._colorVariants || [];
+        const productAddons: ProductAddon[] = product._addons || [];
         const images = (product.images || []).filter((img: string) => img?.startsWith('http'));
         const sizes = (product.sizes || []).filter((s: string) => s?.trim());
         const originalPrice = product.original_price && product.original_price > product.price ? product.original_price : null;
@@ -469,7 +525,7 @@ serve(async (req) => {
           stock: product.stock ?? 10,
           active: true,
           featured: false,
-          variants,
+          variants: [...variants, ...productAddons.map(a => ({ addon: true, ...a }))],
           source_url: url,
         }).select('id').single();
 

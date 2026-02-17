@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, Check, AlertCircle, FileUp, X, Globe, Sparkles, Loader2, Link2, FileText, FileX, ImageIcon, RefreshCw } from 'lucide-react';
 import { BulkImageEnhancer } from '@/components/admin/BulkImageEnhancer';
+import { SiteImportCard } from '@/components/admin/SiteImportCard';
 
 // Function to clean and extract only the product description
 function cleanProductDescription(rawMarkdown: string): string {
@@ -1200,10 +1201,14 @@ export default function AdminImportPage() {
         )}
 
         <Tabs defaultValue="prices" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="prices">Corrigir Preços</TabsTrigger>
             <TabsTrigger value="csv">Importar CSV</TabsTrigger>
-            <TabsTrigger value="description">Importar Descrição</TabsTrigger>
+            <TabsTrigger value="site-import" className="flex items-center gap-1">
+              <Globe className="h-3.5 w-3.5" />
+              Importar Site
+            </TabsTrigger>
+            <TabsTrigger value="description">Descrição</TabsTrigger>
             <TabsTrigger value="images" className="flex items-center gap-1">
               <ImageIcon className="h-3.5 w-3.5" />
               Imagens
@@ -1501,6 +1506,14 @@ export default function AdminImportPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Site Import Tab */}
+          <TabsContent value="site-import" className="space-y-6">
+            <SiteImportCard 
+              categories={categories || []}
+              onComplete={refetchProducts}
+            />
           </TabsContent>
 
           {/* Description Import Tab */}

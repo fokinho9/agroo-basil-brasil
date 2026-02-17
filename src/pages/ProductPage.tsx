@@ -14,6 +14,7 @@ import { ProductReviews } from '@/components/products/ProductReviews';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { FloatingBuyButton } from '@/components/products/FloatingBuyButton';
 import { ProductStoreSection } from '@/components/products/ProductStoreSection';
+import { ProductVariantSelector } from '@/components/products/ProductVariantSelector';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -122,6 +123,8 @@ export default function ProductPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [reviewsGenerated, setReviewsGenerated] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   // Auto-generate reviews if none exist
   useEffect(() => {
@@ -266,6 +269,23 @@ export default function ProductPage() {
                 </p>
               </div>}
           </div>
+
+          {/* Variant Selection (Colors & Sizes) */}
+          {product.variants && product.variants.length > 0 && (
+            <ProductVariantSelector
+              variants={product.variants}
+              selectedColor={selectedColor}
+              selectedSize={selectedSize}
+              onColorChange={(color, imageUrl) => {
+                setSelectedColor(color);
+                if (imageUrl) {
+                  const idx = images.findIndex(img => img === imageUrl);
+                  if (idx >= 0) setCurrentImageIndex(idx);
+                }
+              }}
+              onSizeChange={setSelectedSize}
+            />
+          )}
 
           {/* Scarcity - Low Stock Warning */}
           {!isPriceOnRequest && <div className="flex items-center gap-2 p-3 rounded-lg border border-primary bg-primary/10">

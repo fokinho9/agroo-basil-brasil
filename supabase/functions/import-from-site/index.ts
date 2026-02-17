@@ -23,8 +23,12 @@ const productSchema = {
 };
 
 const SCRAPE_PROMPT =
-  "Extraia os dados do produto: título, descrição completa, preço à vista (price), preço original sem desconto (original_price), todas as URLs de imagem do produto, SKU se houver, estoque se houver, e categorias. " +
-  "Se existir preço promocional e preço normal, use o preço final atual como price e o preço cheio como original_price.";
+  "Extraia os dados do produto desta página. " +
+  "O título é o nome do produto. " +
+  "A descrição começa na seção 'Descrição' e termina antes de 'Avalie este produto' - extraia TODO o conteúdo entre esses dois pontos incluindo características, benefícios, tabela de medidas e informações adicionais. " +
+  "O preço à vista vai em price, o preço original sem desconto em original_price. " +
+  "Extraia TODAS as URLs de imagem do produto (não ícones ou logos do site). " +
+  "SKU se houver, estoque se houver, e categorias.";
 
 async function scrapeProductJson(url: string, apiKey: string) {
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
@@ -40,7 +44,7 @@ async function scrapeProductJson(url: string, apiKey: string) {
       ],
       onlyMainContent: true,
       timeout: 60000,
-      waitFor: 5000,
+      waitFor: 8000,
     }),
   });
 
@@ -115,8 +119,8 @@ serve(async (req) => {
 
       productUrls = (mapData.links || []).filter((url: string) =>
         url.includes('/produto/') && !url.includes('/marca/')
-      );
-      console.log(`Found ${productUrls.length} product URLs`);
+      ).slice(0, 10); // Limit to 10 products per batch
+      console.log(`Found ${productUrls.length} product URLs (limited to 10)`);
 
       await supabase.from('import_jobs').update({
         total_items: productUrls.length,

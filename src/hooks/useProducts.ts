@@ -255,9 +255,10 @@ export function useUpdateProduct() {
 
   return useMutation({
     mutationFn: async ({ id, ...product }: Partial<Product> & { id: string }) => {
+      const { category, ...updateData } = product as any;
       const { data, error } = await supabase
         .from('products')
-        .update(product)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

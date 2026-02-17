@@ -18,6 +18,8 @@ const productSchema = {
     sku: { type: ["string", "null"] },
     stock: { type: ["number", "null"] },
     categories: { type: "array", items: { type: "string" } },
+    colors: { type: "array", items: { type: "string" } },
+    sizes: { type: "array", items: { type: "string" } },
   },
   required: ["title", "price", "images"],
 };
@@ -28,9 +30,12 @@ const SCRAPE_PROMPT =
   "A descrição começa na seção 'Descrição' e termina antes de 'Avalie este produto' - extraia TODO o conteúdo entre esses dois pontos incluindo características, benefícios, tabela de medidas e informações adicionais. " +
   "O preço à vista vai em price, o preço original sem desconto em original_price. " +
   "Extraia TODAS as URLs de imagem do produto (não ícones ou logos do site). " +
-  "SKU se houver, estoque se houver, e categorias.";
+  "SKU se houver, estoque se houver. " +
+  "Em 'categories' extraia a hierarquia de categorias/breadcrumb do produto (ex: ['Selaria', 'Mantas']). " +
+  "Em 'colors' extraia todas as cores/opções de cor disponíveis para o produto. " +
+  "Em 'sizes' extraia todos os tamanhos disponíveis para o produto (ex: ['P', 'M', 'G', 'GG'] ou ['34', '36', '38']).";
 
-const MAX_RUNTIME_MS = 50000; // 50 seconds safe limit
+const MAX_RUNTIME_MS = 50000;
 
 interface ProductLog {
   url: string;
@@ -71,6 +76,118 @@ async function scrapeProductJson(url: string, apiKey: string) {
   return { data: extracted };
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+async function findOrCreateCategory(
+  supabase: any,
+  categoryNames: string[],
+  categoriesCache: Map<string, string>
+): Promise<string | null> {
+  if (!categoryNames || categoryNames.length === 0) return null;
+
+  // Try to find the most specific (last) category first
+  for (let i = categoryNames.length - 1; i >= 0; i--) {
+    const name = categoryNames[i].trim();
+    if (!name) continue;
+
+    const cacheKey = name.toLowerCase();
+    if (categoriesCache.has(cacheKey)) {
+      return categoriesCache.get(cacheKey)!;
+    }
+
+    // Search by name (case insensitive)
+    const { data: existing } = await supabase
+      .from('categories')
+      .select('id')
+      .ilike('name', name)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      categoriesCache.set(cacheKey, existing[0].id);
+      return existing[0].id;
+    }
+  }
+
+  // If no category found, create the hierarchy
+  let parentId: string | null = null;
+  let lastId: string | null = null;
+
+  for (const name of categoryNames) {
+    const trimmed = name.trim();
+    if (!trimmed) continue;
+
+    const cacheKey = trimmed.toLowerCase();
+    if (categoriesCache.has(cacheKey)) {
+      parentId = categoriesCache.get(cacheKey)!;
+      lastId = parentId;
+      continue;
+    }
+
+    // Check if exists
+    const { data: existing } = await supabase
+      .from('categories')
+      .select('id')
+      .ilike('name', trimmed)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      parentId = existing[0].id;
+      lastId = parentId;
+      categoriesCache.set(cacheKey, parentId);
+      continue;
+    }
+
+    // Create it
+    const slug = slugify(trimmed);
+    const { data: created, error } = await supabase
+      .from('categories')
+      .insert({ name: trimmed, slug, parent_id: parentId })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error(`Error creating category "${trimmed}":`, error.message);
+      break;
+    }
+
+    parentId = created.id;
+    lastId = created.id;
+    categoriesCache.set(cacheKey, created.id);
+    console.log(`📁 Created category: ${trimmed} (parent: ${parentId})`);
+  }
+
+  return lastId;
+}
+
+function buildVariants(colors: string[], sizes: string[]): any[] {
+  const variants: any[] = [];
+
+  if (colors.length > 0 && sizes.length > 0) {
+    for (const color of colors) {
+      for (const size of sizes) {
+        variants.push({ color, size });
+      }
+    }
+  } else if (colors.length > 0) {
+    for (const color of colors) {
+      variants.push({ color });
+    }
+  } else if (sizes.length > 0) {
+    for (const size of sizes) {
+      variants.push({ size });
+    }
+  }
+
+  return variants;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -105,7 +222,6 @@ serve(async (req) => {
       });
     }
 
-    // If job was cancelled/failed, don't continue
     if (job.status === 'failed' || job.status === 'completed') {
       return new Response(JSON.stringify({ error: 'Job already finished', status: job.status }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -113,7 +229,7 @@ serve(async (req) => {
     }
 
     const config = job.config as { siteUrl: string; categoryId: string; productUrls?: string[] };
-    const categoryId = config.categoryId;
+    const forcedCategoryId = config.categoryId;
     let productUrls = config.productUrls || [];
 
     await supabase.from('import_jobs').update({ status: 'running' }).eq('id', jobId);
@@ -142,7 +258,6 @@ serve(async (req) => {
         });
       }
 
-      // Deduplicate URLs (with and without trailing slash)
       const urlSet = new Set<string>();
       for (const url of (mapData.links || [])) {
         if (url.includes('/produto/') && !url.includes('/marca/')) {
@@ -165,7 +280,6 @@ serve(async (req) => {
         });
       }
 
-      // Store ALL URLs in config for resume capability
       await supabase.from('import_jobs').update({
         total_items: productUrls.length,
         config: { ...config, productUrls },
@@ -183,6 +297,7 @@ serve(async (req) => {
     let skipped = (job.results as any)?.skipped || 0;
 
     const startTime = Date.now();
+    const categoriesCache = new Map<string, string>();
 
     const updateJob = async () => {
       await supabase.from('import_jobs').update({
@@ -196,13 +311,11 @@ serve(async (req) => {
     let shouldContinue = false;
 
     for (const url of productUrls) {
-      // Skip already processed
       const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
       if (processedUrls.has(url) || processedUrls.has(normalizedUrl) || processedUrls.has(url + '/')) {
         continue;
       }
 
-      // Check if job was cancelled
       if (processed > 0 && processed % 5 === 0) {
         const { data: freshJob } = await supabase.from('import_jobs').select('status').eq('id', jobId).single();
         if (freshJob?.status === 'failed') {
@@ -213,7 +326,6 @@ serve(async (req) => {
         }
       }
 
-      // Check if approaching timeout - self-invoke to continue
       if (Date.now() - startTime > MAX_RUNTIME_MS) {
         console.log(`Approaching timeout after ${processed} items, self-invoking to continue...`);
         await updateJob();
@@ -244,7 +356,6 @@ serve(async (req) => {
           logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Rate limited, aguardando 10s...' });
           await updateJob();
           await new Promise(r => setTimeout(r, 10000));
-          // Don't increment processed, will retry on next invocation
           continue;
         }
 
@@ -283,6 +394,17 @@ serve(async (req) => {
         const originalPrice = product.original_price && product.original_price > product.price
           ? product.original_price : null;
 
+        // Auto-detect category from scraped data
+        let categoryId = forcedCategoryId || null;
+        if (!categoryId && product.categories && product.categories.length > 0) {
+          categoryId = await findOrCreateCategory(supabase, product.categories, categoriesCache);
+        }
+
+        // Build variants from colors and sizes
+        const colors = (product.colors || []).filter((c: string) => c && c.trim());
+        const sizes = (product.sizes || []).filter((s: string) => s && s.trim());
+        const variants = buildVariants(colors, sizes);
+
         const { data: inserted, error: insertError } = await supabase.from('products').insert({
           name: name.length > 150 ? name.substring(0, 147) + '...' : name,
           description: product.description || null,
@@ -290,10 +412,12 @@ serve(async (req) => {
           original_price: originalPrice,
           image_url: images.length > 0 ? images[0] : null,
           images: images.length > 0 ? images : null,
-          category_id: categoryId || null,
+          category_id: categoryId,
           stock: product.stock ?? 10,
           active: true,
           featured: false,
+          variants: variants.length > 0 ? variants : [],
+          source_url: url,
         }).select('id').single();
 
         if (insertError) {
@@ -301,8 +425,9 @@ serve(async (req) => {
           logs.push({ url, name, price: product.price, status: 'error', productId: null, message: `Erro ao inserir: ${insertError.message}` });
           errors++;
         } else {
-          console.log(`✅ Imported: ${name} - R$${product.price}`);
-          logs.push({ url, name, price: product.price, status: 'success', productId: inserted?.id || null, message: 'Importado com sucesso' });
+          const variantInfo = variants.length > 0 ? ` | ${colors.length} cores, ${sizes.length} tamanhos` : '';
+          console.log(`✅ Imported: ${name} - R$${product.price}${variantInfo}`);
+          logs.push({ url, name, price: product.price, status: 'success', productId: inserted?.id || null, message: `Importado com sucesso${variantInfo}` });
           success++;
         }
       } catch (error) {
@@ -318,7 +443,6 @@ serve(async (req) => {
     }
 
     if (shouldContinue) {
-      // Self-invoke to continue processing
       console.log('Self-invoking to continue...');
       const selfUrl = `${supabaseUrl}/functions/v1/import-from-site`;
       fetch(selfUrl, {
@@ -330,7 +454,7 @@ serve(async (req) => {
         body: JSON.stringify({ jobId }),
       }).catch(err => console.error('Self-invoke error:', err));
 
-      return new Response(JSON.stringify({ success: true, continuing: true, processed, success: success }), {
+      return new Response(JSON.stringify({ continuing: true, processed, successCount: success }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

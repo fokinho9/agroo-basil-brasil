@@ -323,8 +323,10 @@ export type Database = {
           name: string
           original_price: number | null
           price: number
+          source_url: string | null
           stock: number | null
           updated_at: string | null
+          variants: Json | null
         }
         Insert: {
           active?: boolean | null
@@ -338,8 +340,10 @@ export type Database = {
           name: string
           original_price?: number | null
           price: number
+          source_url?: string | null
           stock?: number | null
           updated_at?: string | null
+          variants?: Json | null
         }
         Update: {
           active?: boolean | null
@@ -353,8 +357,10 @@ export type Database = {
           name?: string
           original_price?: number | null
           price?: number
+          source_url?: string | null
           stock?: number | null
           updated_at?: string | null
+          variants?: Json | null
         }
         Relationships: [
           {

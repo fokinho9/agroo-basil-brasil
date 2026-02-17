@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductCard } from './ProductCard';
+import { Product } from '@/types';
 
 interface RelatedProductsProps {
   productId: string;
@@ -41,11 +42,11 @@ export function RelatedProducts({ productId, categoryId }: RelatedProductsProps)
         if (moreProducts) {
           const existingIds = new Set(data.map(p => p.id));
           const uniqueMore = moreProducts.filter(p => !existingIds.has(p.id));
-          return [...data, ...uniqueMore].slice(0, 12);
+          return [...data, ...uniqueMore].slice(0, 12) as unknown as Product[];
         }
       }
       
-      return data;
+      return data as unknown as Product[];
     },
   });
 

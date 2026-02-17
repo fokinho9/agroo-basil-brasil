@@ -1,23 +1,132 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Menu, X } from 'lucide-react';
+import { Search, Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
 import logoAgroBrasil from '@/assets/logo-agro-brasil.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSearchProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { formatCurrency } from '@/lib/utils';
+import { Category } from '@/types';
+
+interface CategoryTree extends Category {
+  children: CategoryTree[];
+}
+
+function buildCategoryTree(categories: Category[]): CategoryTree[] {
+  const map = new Map<string, CategoryTree>();
+  const roots: CategoryTree[] = [];
+
+  for (const cat of categories) {
+    map.set(cat.id, { ...cat, children: [] });
+  }
+  for (const cat of categories) {
+    const node = map.get(cat.id)!;
+    if (cat.parent_id && map.has(cat.parent_id)) {
+      map.get(cat.parent_id)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sort = (nodes: CategoryTree[]) => {
+    nodes.sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+    for (const n of nodes) sort(n.children);
+  };
+  sort(roots);
+  return roots;
+}
+
+function DesktopCategoryDropdown({ category, closeMobileMenu }: { category: CategoryTree; closeMobileMenu?: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+    >
+      <Link
+        to={`/categoria/${category.slug}`}
+        className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+      >
+        {category.name}
+        <ChevronDown className="h-3 w-3" />
+      </Link>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg min-w-[200px] py-1 z-50">
+          {category.children.map((sub) => (
+            <SubcategoryItem key={sub.id} category={sub} depth={0} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubcategoryItem({ category, depth }: { category: CategoryTree; depth: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = category.children.length > 0;
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+    >
+      <Link
+        to={`/categoria/${category.slug}`}
+        className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+      >
+        {category.name}
+        {hasChildren && <ChevronRight className="h-3 w-3" />}
+      </Link>
+
+      {hasChildren && isOpen && (
+        <div className="absolute left-full top-0 bg-card border border-border rounded-lg shadow-lg min-w-[180px] py-1 z-50">
+          {category.children.map((sub) => (
+            <SubcategoryItem key={sub.id} category={sub} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Header() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [expandedMobile, setExpandedMobile] = useState<Set<string>>(new Set());
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { data: searchResults } = useSearchProducts(searchTerm);
   const { data: categories } = useCategories();
+
+  const categoryTree = useMemo(() => {
+    if (!categories) return [];
+    return buildCategoryTree(categories);
+  }, [categories]);
+
+  // Only show categories that have subcategories
+  const parentCategories = useMemo(() => {
+    return categoryTree.filter(c => c.children.length > 0);
+  }, [categoryTree]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -50,6 +159,43 @@ export function Header() {
     setSearchTerm('');
   };
 
+  const toggleMobileExpand = (id: string) => {
+    setExpandedMobile(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const renderMobileCategory = (cat: CategoryTree, depth: number = 0) => {
+    const hasChildren = cat.children.length > 0;
+    const isExpanded = expandedMobile.has(cat.id);
+
+    return (
+      <div key={cat.id}>
+        <div className="flex items-center" style={{ paddingLeft: `${depth * 16 + 16}px` }}>
+          <Link
+            to={`/categoria/${cat.slug}`}
+            className="flex-1 py-2 text-muted-foreground hover:text-primary transition-colors"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            {cat.name}
+          </Link>
+          {hasChildren && (
+            <button
+              onClick={() => toggleMobileExpand(cat.id)}
+              className="p-2 text-muted-foreground hover:text-primary"
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+        {hasChildren && isExpanded && cat.children.map(sub => renderMobileCategory(sub, depth + 1))}
+      </div>
+    );
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="container mx-auto px-4">
@@ -71,14 +217,8 @@ export function Header() {
             <Link to="/produtos" className="text-muted-foreground hover:text-primary transition-colors">
               Produtos
             </Link>
-            {categories?.slice(0, 4).map((category) => (
-              <Link
-                key={category.id}
-                to={`/categoria/${category.slug}`}
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
-                {category.name}
-              </Link>
+            {parentCategories.slice(0, 5).map((category) => (
+              <DesktopCategoryDropdown key={category.id} category={category} />
             ))}
           </nav>
 
@@ -135,7 +275,6 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {/* Mobile Search Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -145,7 +284,6 @@ export function Header() {
               <Search className="h-5 w-5" />
             </Button>
 
-            {/* Mobile Menu Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -173,7 +311,6 @@ export function Header() {
                 />
               </div>
             </form>
-            {/* Mobile Search Results */}
             {searchTerm && searchResults && searchResults.length > 0 && (
               <div className="mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
                 {searchResults.slice(0, 5).map((product) => (
@@ -202,8 +339,8 @@ export function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-4">
-            <nav className="flex flex-col gap-2">
+          <div className="md:hidden border-t border-border py-4 max-h-[70vh] overflow-y-auto">
+            <nav className="flex flex-col gap-0.5">
               <Link
                 to="/"
                 className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded transition-colors"
@@ -218,16 +355,7 @@ export function Header() {
               >
                 Produtos
               </Link>
-              {categories?.map((category) => (
-                <Link
-                  key={category.id}
-                  to={`/categoria/${category.slug}`}
-                  className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {category.name}
-                </Link>
-              ))}
+              {parentCategories.map((cat) => renderMobileCategory(cat))}
             </nav>
           </div>
         )}

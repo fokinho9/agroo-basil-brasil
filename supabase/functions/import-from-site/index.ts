@@ -125,8 +125,28 @@ serve(async (req) => {
       const allProductUrls = (mapData.links || []).filter((url: string) =>
         url.includes('/produto/') && !url.includes('/marca/')
       );
-      productUrls = allProductUrls.slice(0, 3); // Limit to 3 products per batch to avoid timeout
-      console.log(`Found ${allProductUrls.length} total product URLs, processing first 3`);
+
+      // Get existing product names to skip duplicates at URL selection level
+      const { data: existingProducts } = await supabase
+        .from('products').select('name').limit(1000);
+      const existingNames = new Set((existingProducts || []).map((p: any) => p.name?.toLowerCase()));
+
+      // Also check previously imported URLs from past jobs
+      const { data: pastJobs } = await supabase
+        .from('import_jobs')
+        .select('config')
+        .eq('type', 'site-import')
+        .neq('id', jobId);
+      const pastUrls = new Set<string>();
+      for (const j of pastJobs || []) {
+        const urls = (j.config as any)?.productUrls || [];
+        for (const u of urls) pastUrls.add(u);
+      }
+
+      // Filter out already-processed URLs and take next batch of 10
+      const newUrls = allProductUrls.filter((url: string) => !pastUrls.has(url));
+      productUrls = newUrls.slice(0, 10);
+      console.log(`Found ${allProductUrls.length} total, ${newUrls.length} new, processing ${productUrls.length}`);
 
       await supabase.from('import_jobs').update({
         total_items: productUrls.length,

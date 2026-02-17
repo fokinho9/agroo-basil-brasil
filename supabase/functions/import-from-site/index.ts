@@ -91,30 +91,58 @@ function parseColorVariants(html: string, baseUrl: string): ColorVariant[] {
   return variants;
 }
 
-// Parse sizes from the radio variation HTML
-function parseSizesFromHtml(html: string): string[] {
+// Parse radio variations by their data-variation-name attribute
+function parseRadioVariations(html: string): { sizes: string[]; radioColors: string[] } {
   const sizes: string[] = [];
-  const sizeSection = html.match(/data-variation-name="Tamanho"[\s\S]*?<\/div>/i);
-  if (!sizeSection) return sizes;
+  const radioColors: string[] = [];
 
-  // Match each label span with size value, skip out-of-stock
-  const regex = /<label[^>]*class="[^"]*label_radio[^"]*"[^>]*>\s*<span>\s*(\d+|[A-Z]+)\s*<\/span>\s*<\/label>/gi;
-  let match;
-  const section = sizeSection[0];
+  // Find all radio variation sections with their variation name
+  const sectionRegex = /data-variation-name="([^"]+)"[\s\S]*?<label[^>]*class="[^"]*label_radio[^"]*"[^>]*>\s*<span>\s*([^<]+?)\s*<\/span>\s*<\/label>/gi;
   
-  // Better approach: match all radio inputs and their labels
-  const radioRegex = /<label[^>]*class="([^"]*)"[^>]*>\s*<span>\s*([^<]+?)\s*<\/span>\s*<\/label>/gi;
-  while ((match = radioRegex.exec(html)) !== null) {
-    const classes = match[1];
-    const size = match[2].trim();
-    // Only include if it's in a size/tamanho section and is a valid size
-    if (size && /^\d{1,3}$|^[XSMLGP]{1,3}$|^GG$/i.test(size)) {
-      sizes.push(size);
+  // First, identify all variation groups and their items
+  // Split by variation containers
+  const variationBlocks = html.match(/<div[^>]*class="[^"]*product-radio-variation[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>/gi) || [];
+  
+  for (const block of variationBlocks) {
+    // Get variation name from data attribute
+    const nameMatch = block.match(/data-variation-name="([^"]+)"/i);
+    if (!nameMatch) continue;
+    const variationName = nameMatch[1].trim().toLowerCase();
+    
+    // Extract all label values in this block
+    const labelRegex = /<label[^>]*class="[^"]*label_radio[^"]*"[^>]*>\s*<span>\s*([^<]+?)\s*<\/span>\s*<\/label>/gi;
+    let match;
+    while ((match = labelRegex.exec(block)) !== null) {
+      const value = match[1].trim();
+      if (!value) continue;
+      
+      if (variationName === 'tamanho') {
+        sizes.push(value);
+      } else if (variationName === 'cor') {
+        radioColors.push(value);
+      }
     }
   }
   
-  // Deduplicate
-  return [...new Set(sizes)];
+  // Fallback: if no blocks matched, try individual inputs
+  if (sizes.length === 0 && radioColors.length === 0) {
+    const inputRegex = /<input[^>]*data-variation-name="([^"]+)"[^>]*>[\s\S]*?<label[^>]*>\s*<span>\s*([^<]+?)\s*<\/span>\s*<\/label>/gi;
+    let match;
+    while ((match = inputRegex.exec(html)) !== null) {
+      const variationName = match[1].trim().toLowerCase();
+      const value = match[2].trim();
+      if (!value) continue;
+      if (variationName === 'tamanho') sizes.push(value);
+      else if (variationName === 'cor') radioColors.push(value);
+    }
+  }
+
+  return { sizes: [...new Set(sizes)], radioColors: [...new Set(radioColors)] };
+}
+
+// Backward compat wrapper
+function parseSizesFromHtml(html: string): string[] {
+  return parseRadioVariations(html).sizes;
 }
 
 // Parse product addons/complementos from HTML
@@ -238,11 +266,32 @@ async function scrapeProductJson(url: string, apiKey: string) {
     console.log(`🎨 Found ${colorVariants.length} color variants from HTML`);
   }
 
-  // Parse sizes from HTML (more reliable than LLM)
-  const htmlSizes = parseSizesFromHtml(rawHtml);
-  if (extracted && htmlSizes.length > 0) {
-    extracted.sizes = htmlSizes;
-    console.log(`📏 Sizes from HTML: ${htmlSizes.join(', ')}`);
+  // Parse radio variations (sizes AND colors) from HTML
+  const radioVariations = parseRadioVariations(rawHtml);
+  if (extracted && radioVariations.sizes.length > 0) {
+    extracted.sizes = radioVariations.sizes;
+    console.log(`📏 Sizes from HTML: ${radioVariations.sizes.join(', ')}`);
+  }
+  // If radio colors found (text-only, no images), add them
+  if (extracted && radioVariations.radioColors.length > 0) {
+    // Only use if no image-based color variants found
+    if (!extracted._colorVariants || extracted._colorVariants.length === 0) {
+      extracted._radioColors = radioVariations.radioColors;
+      console.log(`🎨 Found ${radioVariations.radioColors.length} radio color variants: ${radioVariations.radioColors.join(', ')}`);
+    }
+  }
+  // If we found radio colors but LLM put them in sizes, clear the LLM sizes
+  if (extracted && radioVariations.radioColors.length > 0 && radioVariations.sizes.length === 0) {
+    // LLM might have confused colors as sizes - clear them
+    if (extracted.sizes?.length > 0) {
+      const looksLikeColors = extracted.sizes.some((s: string) => 
+        !(/^\d{1,3}$|^[XSMLGP]{1,3}$|^GG$|^PP$/i.test(s))
+      );
+      if (looksLikeColors) {
+        console.log(`⚠️ Clearing LLM sizes that look like colors: ${extracted.sizes.join(', ')}`);
+        extracted.sizes = [];
+      }
+    }
   }
 
   // Parse addons/complementos from HTML
@@ -461,6 +510,7 @@ serve(async (req) => {
 
         // Get color variants parsed from HTML
         const colorVariants: ColorVariant[] = product._colorVariants || [];
+        const radioColors: string[] = product._radioColors || [];
         const productAddons: ProductAddon[] = product._addons || [];
         const images = (product.images || []).filter((img: string) => img?.startsWith('http'));
         const sizes = (product.sizes || []).filter((s: string) => s?.trim());
@@ -495,11 +545,16 @@ serve(async (req) => {
           categoryId = await findOrCreateCategory(supabase, product.categories, categoriesCache);
         }
 
-        // Build variants from color HTML + sizes
+        // Build variants from color HTML + radio colors + sizes
         const variants: any[] = [];
         if (colorVariants.length > 0) {
           for (const cv of colorVariants) {
             variants.push({ color: cv.color, image_url: cv.image_url });
+          }
+        } else if (radioColors.length > 0) {
+          // Text-only color variants (no images)
+          for (const color of radioColors) {
+            variants.push({ color });
           }
         }
         for (const size of sizes) {

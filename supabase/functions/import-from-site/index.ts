@@ -223,85 +223,116 @@ function getBaseProductName(variants: ColorVariant[]): string | null {
   return prefix.trim() || null;
 }
 
-async function scrapeProductJson(url: string, apiKey: string) {
-  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      url,
-      formats: ['json', 'rawHtml'],
-      jsonOptions: { schema: productSchema, prompt: SCRAPE_PROMPT },
-      onlyMainContent: false,
-      timeout: 20000,
-      waitFor: 1000,
-    }),
-  });
+async function scrapeProductJson(url: string, apiKey: string, retries = 2): Promise<any> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          url,
+          formats: ['json', 'rawHtml'],
+          jsonOptions: { schema: productSchema, prompt: SCRAPE_PROMPT },
+          onlyMainContent: false,
+          timeout: 30000,
+          waitFor: 2000,
+        }),
+      });
 
-  if (response.status === 402) return { error: 'credits_exhausted' };
-  if (response.status === 429) return { error: 'rate_limited' };
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`Scrape HTTP error: ${errorBody}`);
-    return { error: `http_${response.status}` };
-  }
-
-  const data = await response.json();
-  const extracted = data?.data?.extract || data?.extract || data?.data?.json || data?.json || null;
-  const rawHtml = data?.data?.rawHtml || data?.rawHtml || '';
-
-  // Parse breadcrumb for categories
-  const breadcrumbCategories = parseBreadcrumbFromHtml(rawHtml);
-  if (extracted && breadcrumbCategories.length > 0) {
-    extracted.categories = breadcrumbCategories;
-    console.log(`📂 Breadcrumb: ${breadcrumbCategories.join(' > ')}`);
-  }
-
-  // Parse color variants from HTML
-  const colorVariants = parseColorVariants(rawHtml, url);
-  if (extracted && colorVariants.length > 0) {
-    extracted._colorVariants = colorVariants;
-    console.log(`🎨 Found ${colorVariants.length} color variants from HTML`);
-  }
-
-  // Parse radio variations (sizes AND colors) from HTML
-  const radioVariations = parseRadioVariations(rawHtml);
-  if (extracted && radioVariations.sizes.length > 0) {
-    extracted.sizes = radioVariations.sizes;
-    console.log(`📏 Sizes from HTML: ${radioVariations.sizes.join(', ')}`);
-  }
-  // If radio colors found (text-only, no images), add them
-  if (extracted && radioVariations.radioColors.length > 0) {
-    // Only use if no image-based color variants found
-    if (!extracted._colorVariants || extracted._colorVariants.length === 0) {
-      extracted._radioColors = radioVariations.radioColors;
-      console.log(`🎨 Found ${radioVariations.radioColors.length} radio color variants: ${radioVariations.radioColors.join(', ')}`);
-    }
-  }
-  // If we found radio colors but LLM put them in sizes, clear the LLM sizes
-  if (extracted && radioVariations.radioColors.length > 0 && radioVariations.sizes.length === 0) {
-    // LLM might have confused colors as sizes - clear them
-    if (extracted.sizes?.length > 0) {
-      const looksLikeColors = extracted.sizes.some((s: string) => 
-        !(/^\d{1,3}$|^[XSMLGP]{1,3}$|^GG$|^PP$/i.test(s))
-      );
-      if (looksLikeColors) {
-        console.log(`⚠️ Clearing LLM sizes that look like colors: ${extracted.sizes.join(', ')}`);
-        extracted.sizes = [];
+      if (response.status === 402) return { error: 'credits_exhausted' };
+      if (response.status === 429) return { error: 'rate_limited' };
+      
+      // Retry on timeout (408) or server errors (5xx)
+      if (response.status === 408 || response.status >= 500) {
+        const errorBody = await response.text();
+        if (attempt < retries) {
+          console.log(`⏳ Retry ${attempt + 1}/${retries} for ${url} (HTTP ${response.status})`);
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        console.error(`Scrape HTTP error after ${retries + 1} attempts: ${errorBody}`);
+        return { error: `http_${response.status}` };
       }
+      
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`Scrape HTTP error: ${errorBody}`);
+        return { error: `http_${response.status}` };
+      }
+
+      const data = await response.json();
+      const extracted = data?.data?.extract || data?.extract || data?.data?.json || data?.json || null;
+      const rawHtml = data?.data?.rawHtml || data?.rawHtml || '';
+
+      // Check for SCRAPE_TIMEOUT in response body
+      if (data?.success === false && data?.code === 'SCRAPE_TIMEOUT') {
+        if (attempt < retries) {
+          console.log(`⏳ Retry ${attempt + 1}/${retries} for ${url} (SCRAPE_TIMEOUT)`);
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        return { error: 'scrape_timeout' };
+      }
+
+      // Parse breadcrumb for categories
+      const breadcrumbCategories = parseBreadcrumbFromHtml(rawHtml);
+      if (extracted && breadcrumbCategories.length > 0) {
+        extracted.categories = breadcrumbCategories;
+        console.log(`📂 Breadcrumb: ${breadcrumbCategories.join(' > ')}`);
+      }
+
+      // Parse color variants from HTML
+      const colorVariants = parseColorVariants(rawHtml, url);
+      if (extracted && colorVariants.length > 0) {
+        extracted._colorVariants = colorVariants;
+        console.log(`🎨 Found ${colorVariants.length} color variants from HTML`);
+      }
+
+      // Parse radio variations (sizes AND colors) from HTML
+      const radioVariations = parseRadioVariations(rawHtml);
+      if (extracted && radioVariations.sizes.length > 0) {
+        extracted.sizes = radioVariations.sizes;
+        console.log(`📏 Sizes from HTML: ${radioVariations.sizes.join(', ')}`);
+      }
+      if (extracted && radioVariations.radioColors.length > 0) {
+        if (!extracted._colorVariants || extracted._colorVariants.length === 0) {
+          extracted._radioColors = radioVariations.radioColors;
+          console.log(`🎨 Found ${radioVariations.radioColors.length} radio color variants: ${radioVariations.radioColors.join(', ')}`);
+        }
+      }
+      if (extracted && radioVariations.radioColors.length > 0 && radioVariations.sizes.length === 0) {
+        if (extracted.sizes?.length > 0) {
+          const looksLikeColors = extracted.sizes.some((s: string) => 
+            !(/^\d{1,3}$|^[XSMLGP]{1,3}$|^GG$|^PP$/i.test(s))
+          );
+          if (looksLikeColors) {
+            console.log(`⚠️ Clearing LLM sizes that look like colors: ${extracted.sizes.join(', ')}`);
+            extracted.sizes = [];
+          }
+        }
+      }
+
+      // Parse addons/complementos from HTML
+      const addons = parseAddonsFromHtml(rawHtml);
+      if (extracted && addons.length > 0) {
+        extracted._addons = addons;
+        console.log(`🎁 Found ${addons.length} addons: ${addons.map(a => a.label).join(', ')}`);
+      }
+
+      return { data: extracted };
+    } catch (fetchError) {
+      if (attempt < retries) {
+        console.log(`⏳ Retry ${attempt + 1}/${retries} for ${url} (network error: ${String(fetchError).substring(0, 100)})`);
+        await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+      return { error: String(fetchError).substring(0, 200) };
     }
   }
-
-  // Parse addons/complementos from HTML
-  const addons = parseAddonsFromHtml(rawHtml);
-  if (extracted && addons.length > 0) {
-    extracted._addons = addons;
-    console.log(`🎁 Found ${addons.length} addons: ${addons.map(a => a.label).join(', ')}`);
-  }
-
-  return { data: extracted };
+  return { error: 'max_retries_exceeded' };
 }
 
 async function findOrCreateCategory(

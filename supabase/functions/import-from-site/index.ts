@@ -93,6 +93,24 @@ function getBaseName(title: string): string {
   return base;
 }
 
+function parseBreadcrumbFromHtml(html: string): string[] {
+  const categories: string[] = [];
+  // Match breadcrumb items: <span itemprop="name">CategoryName</span>
+  const regex = /itemprop="name">([^<]+)<\/span>/g;
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    const name = match[1].trim();
+    if (name && name.toLowerCase() !== 'home') {
+      categories.push(name);
+    }
+  }
+  // Remove last item (product name itself) if we have more than 1
+  if (categories.length > 1) {
+    categories.pop();
+  }
+  return categories;
+}
+
 async function scrapeProductJson(url: string, apiKey: string) {
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
@@ -102,9 +120,9 @@ async function scrapeProductJson(url: string, apiKey: string) {
     },
     body: JSON.stringify({
       url,
-      formats: ['json'],
+      formats: ['json', 'rawHtml'],
       jsonOptions: { schema: productSchema, prompt: SCRAPE_PROMPT },
-      onlyMainContent: true,
+      onlyMainContent: false,
       timeout: 30000,
       waitFor: 2000,
     }),
@@ -120,6 +138,15 @@ async function scrapeProductJson(url: string, apiKey: string) {
 
   const data = await response.json();
   const extracted = data?.data?.extract || data?.extract || data?.data?.json || data?.json || null;
+  const rawHtml = data?.data?.rawHtml || data?.rawHtml || '';
+
+  // Parse breadcrumb from HTML for reliable category extraction
+  const breadcrumbCategories = parseBreadcrumbFromHtml(rawHtml);
+  if (extracted && breadcrumbCategories.length > 0) {
+    extracted.categories = breadcrumbCategories;
+    console.log(`📂 Breadcrumb categories: ${breadcrumbCategories.join(' > ')}`);
+  }
+
   return { data: extracted };
 }
 

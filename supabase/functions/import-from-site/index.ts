@@ -143,22 +143,26 @@ serve(async (req) => {
         url.includes('/produto/') && !url.includes('/marca/')
       );
 
-      // Check previously imported URLs from past jobs
+      // Check previously imported URLs from past jobs - use results logs (actual processed URLs)
       const { data: pastJobs } = await supabase
         .from('import_jobs')
-        .select('config')
+        .select('results')
         .eq('type', 'site-import')
-        .neq('id', jobId);
+        .neq('id', jobId)
+        .not('results', 'is', null);
       const pastUrls = new Set<string>();
       for (const j of pastJobs || []) {
-        const urls = (j.config as any)?.productUrls || [];
-        for (const u of urls) pastUrls.add(u);
+        const logs = (j.results as any)?.logs || [];
+        for (const log of logs) {
+          if (log.url) pastUrls.add(log.url);
+        }
       }
 
-      // Filter out already-processed URLs and take next batch of 10
+      // Also check products already in DB by checking existing product names
+      // Filter out already-processed URLs and take next batch
       const newUrls = allProductUrls.filter((url: string) => !pastUrls.has(url));
       productUrls = newUrls.slice(0, 10);
-      console.log(`Found ${allProductUrls.length} total, ${newUrls.length} new, processing ${productUrls.length}`);
+      console.log(`Found ${allProductUrls.length} total, ${pastUrls.size} past URLs, ${newUrls.length} new, processing ${productUrls.length}`);
 
       if (productUrls.length === 0) {
         await supabase.from('import_jobs').update({

@@ -36,6 +36,7 @@ import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { ProductImagesForm } from '@/components/admin/ProductImagesForm';
+import { ProductVariantsEditor } from '@/components/admin/ProductVariantsEditor';
 
 type ProductFilter = 'all' | 'no-image' | 'no-description' | 'no-price';
 
@@ -61,6 +62,7 @@ export default function AdminProductsPage() {
     stock: '',
     active: true,
     featured: false,
+    variants: [] as any[],
   });
 
   // Count products with issues
@@ -98,6 +100,7 @@ export default function AdminProductsPage() {
       stock: '',
       active: true,
       featured: false,
+      variants: [],
     });
     setEditingProduct(null);
   };
@@ -115,6 +118,7 @@ export default function AdminProductsPage() {
       stock: product.stock.toString(),
       active: product.active,
       featured: product.featured,
+      variants: (product.variants as any[]) || [],
     });
     setIsDialogOpen(true);
   };
@@ -133,6 +137,7 @@ export default function AdminProductsPage() {
       stock: parseInt(formData.stock) || 0,
       active: formData.active,
       featured: formData.featured,
+      variants: formData.variants.length > 0 ? formData.variants : [],
     };
 
     try {
@@ -259,6 +264,12 @@ export default function AdminProductsPage() {
                       onChange={(images) => setFormData({ ...formData, images })}
                       mainImageUrl={formData.image_url}
                       onMainImageChange={(url) => setFormData({ ...formData, image_url: url })}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <ProductVariantsEditor
+                      variants={formData.variants}
+                      onChange={(variants) => setFormData({ ...formData, variants })}
                     />
                   </div>
                   <div className="flex items-center gap-2">

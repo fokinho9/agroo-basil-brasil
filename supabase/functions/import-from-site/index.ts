@@ -451,14 +451,18 @@ serve(async (req) => {
     };
 
     let shouldContinue = false;
+    const PARALLEL_BATCH_SIZE = 10;
 
-    for (const url of productUrls) {
+    // Filter URLs not yet processed
+    const pendingUrls = productUrls.filter((url: string) => {
       const norm = url.endsWith('/') ? url.slice(0, -1) : url;
-      if (processedUrls.has(url) || processedUrls.has(norm) || processedUrls.has(url + '/')) {
-        continue;
-      }
+      return !processedUrls.has(url) && !processedUrls.has(norm) && !processedUrls.has(url + '/');
+    });
 
-      if (processed > 0 && processed % 5 === 0) {
+    // Process in parallel batches of PARALLEL_BATCH_SIZE
+    for (let batchStart = 0; batchStart < pendingUrls.length; batchStart += PARALLEL_BATCH_SIZE) {
+      // Check cancellation
+      if (processed > 0) {
         const { data: freshJob } = await supabase.from('import_jobs').select('status').eq('id', jobId).single();
         if (freshJob?.status === 'failed') {
           console.log('Job cancelled'); return new Response(JSON.stringify({ cancelled: true }), {
@@ -472,32 +476,48 @@ serve(async (req) => {
         await updateJob(); shouldContinue = true; break;
       }
 
-      console.log(`[${processed + 1}/${productUrls.length}] Scraping: ${url}`);
+      const batch = pendingUrls.slice(batchStart, batchStart + PARALLEL_BATCH_SIZE);
+      console.log(`⚡ Processing batch of ${batch.length} (${processed + 1}-${processed + batch.length}/${productUrls.length})`);
 
-      try {
-        const result = await scrapeProductJson(url, firecrawlApiKey);
+      // Scrape all URLs in parallel
+      const scrapeResults = await Promise.allSettled(
+        batch.map(url => scrapeProductJson(url, firecrawlApiKey).then(r => ({ url, result: r })))
+      );
+
+      let creditsExhausted = false;
+
+      for (const settled of scrapeResults) {
+        if (settled.status === 'rejected') {
+          const url = 'unknown';
+          console.error(`Error in batch:`, settled.reason);
+          logs.push({ url, name: null, price: null, status: 'error', productId: null, message: `Erro: ${String(settled.reason).substring(0, 200)}` });
+          errors++; processed++;
+          continue;
+        }
+
+        const { url, result } = settled.value;
+        const norm = url.endsWith('/') ? url.slice(0, -1) : url;
+
+        // Skip if already processed by a variant merge in this batch
+        if (processedUrls.has(url) || processedUrls.has(norm)) {
+          continue;
+        }
 
         if (result.error === 'credits_exhausted') {
           logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Créditos esgotados' });
-          errors++; processed++;
-          await supabase.from('import_jobs').update({
-            status: 'failed', error_message: 'Créditos Firecrawl esgotados',
-            processed_items: processed, success_count: success, error_count: errors,
-            results: { skipped, merged, logs },
-          }).eq('id', jobId);
-          return new Response(JSON.stringify({ error: 'credits_exhausted' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          errors++; processed++; creditsExhausted = true;
+          continue;
         }
 
         if (result.error === 'rate_limited') {
-          logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Rate limited' });
-          await updateJob(); await new Promise(r => setTimeout(r, 10000)); continue;
+          logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Rate limited - será retentado' });
+          // Don't mark as processed so it retries on next invocation
+          continue;
         }
 
         if (result.error || !result.data) {
           logs.push({ url, name: null, price: null, status: 'error', productId: null, message: `Erro: ${result.error || 'sem dados'}` });
-          errors++; processed++; await updateJob(); continue;
+          errors++; processed++; processedUrls.add(url); continue;
         }
 
         const product = result.data;
@@ -505,10 +525,9 @@ serve(async (req) => {
 
         if (!name || name.length < 3 || typeof product.price !== 'number') {
           logs.push({ url, name: name || null, price: product.price || null, status: 'error', productId: null, message: 'Dados inválidos' });
-          errors++; processed++; await updateJob(); continue;
+          errors++; processed++; processedUrls.add(url); continue;
         }
 
-        // Get color variants parsed from HTML
         const colorVariants: ColorVariant[] = product._colorVariants || [];
         const radioColors: string[] = product._radioColors || [];
         const productAddons: ProductAddon[] = product._addons || [];
@@ -516,57 +535,39 @@ serve(async (req) => {
         const sizes = (product.sizes || []).filter((s: string) => s?.trim());
         const originalPrice = product.original_price && product.original_price > product.price ? product.original_price : null;
 
-        // Build product name: use common prefix from color variants, or original name
         let productName = name;
         if (colorVariants.length >= 2) {
           const baseName = getBaseProductName(colorVariants);
-          if (baseName && baseName.length > 5) {
-            productName = baseName;
-          }
+          if (baseName && baseName.length > 5) productName = baseName;
         }
 
-        // Check duplicate by base product name
         const { data: existing } = await supabase
           .from('products').select('id').ilike('name', productName).limit(1);
 
         if (existing && existing.length > 0) {
-          // Mark all variant URLs as processed too
           for (const cv of colorVariants) {
-            const cvNorm = cv.url.endsWith('/') ? cv.url.slice(0, -1) : cv.url;
-            processedUrls.add(cvNorm);
+            processedUrls.add(cv.url.endsWith('/') ? cv.url.slice(0, -1) : cv.url);
           }
           logs.push({ url, name: productName, price: product.price, status: 'skipped', productId: existing[0].id, message: 'Produto duplicado' });
-          skipped++; processed++; await updateJob(); continue;
+          skipped++; processed++; processedUrls.add(url); continue;
         }
 
-        // Category
         let categoryId = forcedCategoryId || null;
         if (!categoryId && product.categories?.length > 0) {
           categoryId = await findOrCreateCategory(supabase, product.categories, categoriesCache);
         }
 
-        // Build variants from color HTML + radio colors + sizes
         const variants: any[] = [];
         if (colorVariants.length > 0) {
-          for (const cv of colorVariants) {
-            variants.push({ color: cv.color, image_url: cv.image_url });
-          }
+          for (const cv of colorVariants) variants.push({ color: cv.color, image_url: cv.image_url });
         } else if (radioColors.length > 0) {
-          // Text-only color variants (no images)
-          for (const color of radioColors) {
-            variants.push({ color });
-          }
+          for (const color of radioColors) variants.push({ color });
         }
-        for (const size of sizes) {
-          variants.push({ size });
-        }
+        for (const size of sizes) variants.push({ size });
 
-        // Collect all images: product images + color variant images
         const allImages = [...images];
         for (const cv of colorVariants) {
-          if (cv.image_url && !allImages.includes(cv.image_url)) {
-            allImages.push(cv.image_url);
-          }
+          if (cv.image_url && !allImages.includes(cv.image_url)) allImages.push(cv.image_url);
         }
 
         const { data: inserted, error: insertError } = await supabase.from('products').insert({
@@ -589,11 +590,9 @@ serve(async (req) => {
           logs.push({ url, name: productName, price: product.price, status: 'error', productId: null, message: `Erro: ${insertError.message}` });
           errors++;
         } else {
-          // Mark ALL color variant URLs as processed so we don't scrape them again
           for (const cv of colorVariants) {
             const cvNorm = cv.url.endsWith('/') ? cv.url.slice(0, -1) : cv.url;
             processedUrls.add(cvNorm);
-            // Also add log entries for skipped variant URLs
             if (cvNorm !== norm) {
               logs.push({ url: cvNorm, name: cv.color, price: product.price, status: 'merged', productId: inserted.id, message: `Variante de cor mesclada` });
               merged++;
@@ -604,16 +603,24 @@ serve(async (req) => {
           logs.push({ url, name: productName, price: product.price, status: 'success', productId: inserted.id, message: `Importado | ${info}` });
           success++;
         }
-      } catch (error) {
-        console.error(`Error processing ${url}:`, error);
-        logs.push({ url, name: null, price: null, status: 'error', productId: null, message: `Erro: ${String(error).substring(0, 200)}` });
-        errors++;
+
+        processed++;
+        processedUrls.add(url);
       }
 
-      processed++;
-      processedUrls.add(url);
+      // Handle credits exhausted - stop entirely
+      if (creditsExhausted) {
+        await supabase.from('import_jobs').update({
+          status: 'failed', error_message: 'Créditos Firecrawl esgotados',
+          processed_items: processed, success_count: success, error_count: errors,
+          results: { skipped, merged, logs },
+        }).eq('id', jobId);
+        return new Response(JSON.stringify({ error: 'credits_exhausted' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       await updateJob();
-      await new Promise(r => setTimeout(r, 500));
     }
 
     if (shouldContinue) {

@@ -30,6 +30,17 @@ const SCRAPE_PROMPT =
   "Extraia TODAS as URLs de imagem do produto (não ícones ou logos do site). " +
   "SKU se houver, estoque se houver, e categorias.";
 
+const MAX_RUNTIME_MS = 50000; // 50 seconds safe limit
+
+interface ProductLog {
+  url: string;
+  name: string | null;
+  price: number | null;
+  status: 'success' | 'error' | 'skipped';
+  productId: string | null;
+  message: string;
+}
+
 async function scrapeProductJson(url: string, apiKey: string) {
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
@@ -40,17 +51,12 @@ async function scrapeProductJson(url: string, apiKey: string) {
     body: JSON.stringify({
       url,
       formats: ['json'],
-      jsonOptions: {
-        schema: productSchema,
-        prompt: SCRAPE_PROMPT,
-      },
+      jsonOptions: { schema: productSchema, prompt: SCRAPE_PROMPT },
       onlyMainContent: true,
       timeout: 30000,
       waitFor: 2000,
     }),
   });
-
-  console.log(`Scrape response for ${url}: status=${response.status}`);
 
   if (response.status === 402) return { error: 'credits_exhausted' };
   if (response.status === 429) return { error: 'rate_limited' };
@@ -61,18 +67,8 @@ async function scrapeProductJson(url: string, apiKey: string) {
   }
 
   const data = await response.json();
-  console.log(`Scrape data keys: ${JSON.stringify(Object.keys(data?.data || data || {}))}`);
   const extracted = data?.data?.extract || data?.extract || data?.data?.json || data?.json || null;
   return { data: extracted };
-}
-
-interface ProductLog {
-  url: string;
-  name: string | null;
-  price: number | null;
-  status: 'success' | 'error' | 'skipped';
-  productId: string | null;
-  message: string;
 }
 
 serve(async (req) => {
@@ -109,13 +105,20 @@ serve(async (req) => {
       });
     }
 
+    // If job was cancelled/failed, don't continue
+    if (job.status === 'failed' || job.status === 'completed') {
+      return new Response(JSON.stringify({ error: 'Job already finished', status: job.status }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const config = job.config as { siteUrl: string; categoryId: string; productUrls?: string[] };
     const categoryId = config.categoryId;
     let productUrls = config.productUrls || [];
 
     await supabase.from('import_jobs').update({ status: 'running' }).eq('id', jobId);
 
-    // Step 1: Map site if no URLs provided
+    // Step 1: Map site if no URLs stored yet
     if (productUrls.length === 0) {
       console.log('Mapping site:', config.siteUrl);
       const mapResponse = await fetch('https://api.firecrawl.dev/v1/map', {
@@ -132,60 +135,54 @@ serve(async (req) => {
         await supabase.from('import_jobs').update({
           status: 'failed',
           error_message: 'Failed to map site',
-          results: { logs: [{ url: config.siteUrl, name: null, price: null, status: 'error', productId: null, message: 'Falha ao mapear o site' }] },
+          results: { skipped: 0, logs: [{ url: config.siteUrl, name: null, price: null, status: 'error', productId: null, message: 'Falha ao mapear o site' }] },
         }).eq('id', jobId);
         return new Response(JSON.stringify({ error: 'Failed to map site' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const allProductUrls = (mapData.links || []).filter((url: string) =>
-        url.includes('/produto/') && !url.includes('/marca/')
-      );
-
-      // Check previously imported URLs from past jobs - use results logs (actual processed URLs)
-      const { data: pastJobs } = await supabase
-        .from('import_jobs')
-        .select('results')
-        .eq('type', 'site-import')
-        .neq('id', jobId)
-        .not('results', 'is', null);
-      const pastUrls = new Set<string>();
-      for (const j of pastJobs || []) {
-        const logs = (j.results as any)?.logs || [];
-        for (const log of logs) {
-          if (log.url) pastUrls.add(log.url);
+      // Deduplicate URLs (with and without trailing slash)
+      const urlSet = new Set<string>();
+      for (const url of (mapData.links || [])) {
+        if (url.includes('/produto/') && !url.includes('/marca/')) {
+          const normalized = url.endsWith('/') ? url.slice(0, -1) : url;
+          urlSet.add(normalized);
         }
       }
+      productUrls = Array.from(urlSet);
 
-      // Also check products already in DB by checking existing product names
-      // Filter out already-processed URLs and take next batch
-      const newUrls = allProductUrls.filter((url: string) => !pastUrls.has(url));
-      productUrls = newUrls.slice(0, 10);
-      console.log(`Found ${allProductUrls.length} total, ${pastUrls.size} past URLs, ${newUrls.length} new, processing ${productUrls.length}`);
+      console.log(`Mapped ${productUrls.length} unique product URLs`);
 
       if (productUrls.length === 0) {
         await supabase.from('import_jobs').update({
-          status: 'completed',
-          total_items: 0,
-          processed_items: 0,
-          results: { skipped: 0, logs: [{ url: config.siteUrl, name: null, price: null, status: 'error', productId: null, message: `Todos os ${allProductUrls.length} produtos já foram processados em importações anteriores` }] },
+          status: 'completed', total_items: 0, processed_items: 0,
+          results: { skipped: 0, logs: [] },
           completed_at: new Date().toISOString(),
         }).eq('id', jobId);
-        return new Response(JSON.stringify({ success: true, processed: 0, message: 'All URLs already processed' }), {
+        return new Response(JSON.stringify({ success: true, processed: 0 }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
+      // Store ALL URLs in config for resume capability
       await supabase.from('import_jobs').update({
         total_items: productUrls.length,
         config: { ...config, productUrls },
       }).eq('id', jobId);
     }
 
-    // Step 2: Scrape each product
-    let processed = 0, success = 0, errors = 0, skipped = 0;
-    const logs: ProductLog[] = [];
+    // Step 2: Determine already processed URLs from logs
+    const existingLogs: ProductLog[] = ((job.results as any)?.logs) || [];
+    const processedUrls = new Set(existingLogs.map((l: ProductLog) => l.url));
+
+    let logs = [...existingLogs];
+    let processed = job.processed_items || 0;
+    let success = job.success_count || 0;
+    let errors = job.error_count || 0;
+    let skipped = (job.results as any)?.skipped || 0;
+
+    const startTime = Date.now();
 
     const updateJob = async () => {
       await supabase.from('import_jobs').update({
@@ -196,31 +193,65 @@ serve(async (req) => {
       }).eq('id', jobId);
     };
 
+    let shouldContinue = false;
+
     for (const url of productUrls) {
+      // Skip already processed
+      const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      if (processedUrls.has(url) || processedUrls.has(normalizedUrl) || processedUrls.has(url + '/')) {
+        continue;
+      }
+
+      // Check if job was cancelled
+      if (processed > 0 && processed % 5 === 0) {
+        const { data: freshJob } = await supabase.from('import_jobs').select('status').eq('id', jobId).single();
+        if (freshJob?.status === 'failed') {
+          console.log('Job was cancelled, stopping');
+          return new Response(JSON.stringify({ success: false, cancelled: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // Check if approaching timeout - self-invoke to continue
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log(`Approaching timeout after ${processed} items, self-invoking to continue...`);
+        await updateJob();
+        shouldContinue = true;
+        break;
+      }
+
       console.log(`[${processed + 1}/${productUrls.length}] Scraping: ${url}`);
+      
       try {
         const result = await scrapeProductJson(url, firecrawlApiKey);
 
         if (result.error === 'credits_exhausted') {
           logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Créditos Firecrawl esgotados' });
+          errors++;
+          processed++;
           await supabase.from('import_jobs').update({
             status: 'failed', error_message: 'Créditos Firecrawl esgotados',
             processed_items: processed, success_count: success, error_count: errors,
             results: { skipped, logs },
           }).eq('id', jobId);
-          break;
+          return new Response(JSON.stringify({ error: 'credits_exhausted' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
 
         if (result.error === 'rate_limited') {
-          logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Rate limited, aguardando...' });
+          logs.push({ url, name: null, price: null, status: 'error', productId: null, message: 'Rate limited, aguardando 10s...' });
           await updateJob();
           await new Promise(r => setTimeout(r, 10000));
+          // Don't increment processed, will retry on next invocation
           continue;
         }
 
         if (result.error || !result.data) {
           logs.push({ url, name: null, price: null, status: 'error', productId: null, message: `Erro no scrape: ${result.error || 'sem dados'}` });
-          errors++; processed++;
+          errors++;
+          processed++;
           await updateJob();
           continue;
         }
@@ -230,18 +261,20 @@ serve(async (req) => {
 
         if (!name || name.length < 3 || typeof product.price !== 'number') {
           logs.push({ url, name: name || null, price: product.price || null, status: 'error', productId: null, message: 'Dados inválidos (nome ou preço ausente)' });
-          errors++; processed++;
+          errors++;
+          processed++;
           await updateJob();
           continue;
         }
 
-        // Check duplicate
+        // Check duplicate by name
         const { data: existing } = await supabase
           .from('products').select('id').ilike('name', name).limit(1);
 
         if (existing && existing.length > 0) {
           logs.push({ url, name, price: product.price, status: 'skipped', productId: existing[0].id, message: 'Produto duplicado' });
-          skipped++; processed++;
+          skipped++;
+          processed++;
           await updateJob();
           continue;
         }
@@ -274,19 +307,41 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error(`Error processing ${url}:`, error);
-        logs.push({ url, name: null, price: null, status: 'error', productId: null, message: `Erro: ${String(error)}` });
+        logs.push({ url, name: null, price: null, status: 'error', productId: null, message: `Erro: ${String(error).substring(0, 200)}` });
         errors++;
       }
 
       processed++;
+      processedUrls.add(url);
       await updateJob();
       await new Promise(r => setTimeout(r, 500));
     }
 
+    if (shouldContinue) {
+      // Self-invoke to continue processing
+      console.log('Self-invoking to continue...');
+      const selfUrl = `${supabaseUrl}/functions/v1/import-from-site`;
+      fetch(selfUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({ jobId }),
+      }).catch(err => console.error('Self-invoke error:', err));
+
+      return new Response(JSON.stringify({ success: true, continuing: true, processed, success: success }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // All done!
     await supabase.from('import_jobs').update({
       status: 'completed', processed_items: processed, success_count: success,
       error_count: errors, results: { skipped, logs }, completed_at: new Date().toISOString(),
     }).eq('id', jobId);
+
+    console.log(`Import complete: ${success} imported, ${errors} errors, ${skipped} skipped`);
 
     return new Response(JSON.stringify({ success: true, processed, successCount: success, errorCount: errors, skipped }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

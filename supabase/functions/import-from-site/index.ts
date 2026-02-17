@@ -235,8 +235,8 @@ async function scrapeProductJson(url: string, apiKey: string) {
       formats: ['json', 'rawHtml'],
       jsonOptions: { schema: productSchema, prompt: SCRAPE_PROMPT },
       onlyMainContent: false,
-      timeout: 30000,
-      waitFor: 2000,
+      timeout: 20000,
+      waitFor: 1000,
     }),
   });
 
@@ -460,7 +460,7 @@ serve(async (req) => {
     };
 
     let shouldContinue = false;
-    const PARALLEL_BATCH_SIZE = 10;
+    const PARALLEL_BATCH_SIZE = 15;
 
     // Filter URLs not yet processed
     const pendingUrls = productUrls.filter((url: string) => {

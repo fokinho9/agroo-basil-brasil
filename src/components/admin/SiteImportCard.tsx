@@ -117,7 +117,7 @@ function PaginatedLogs({ logs }: { logs: ProductLog[] }) {
 }
 
 export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) {
-  const [siteUrl, setSiteUrl] = useState('https://www.cavalariashop.com.br/');
+  const [siteUrl, setSiteUrl] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [dismissedJobId, setDismissedJobId] = useState<string | null>(null);

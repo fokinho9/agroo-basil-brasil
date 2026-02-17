@@ -259,8 +259,8 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
 
             <PaginatedLogs logs={logs} />
 
-            <Button onClick={() => refetchJob()}>
-              Tentar Novamente
+            <Button onClick={() => setDismissedJobId(activeJob.id)}>
+              Iniciar Nova Importação
             </Button>
           </div>
         ) : (

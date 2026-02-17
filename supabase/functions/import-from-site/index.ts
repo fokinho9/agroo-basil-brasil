@@ -419,11 +419,20 @@ serve(async (req) => {
       }).eq('id', jobId);
     }
 
-    const config = job.config as { siteUrl: string; categoryId: string; productUrls?: string[] };
+    const config = job.config as { siteUrl: string; categoryId: string; productUrls?: string[]; retryUrls?: string[] };
     const forcedCategoryId = config.categoryId;
     let productUrls = config.productUrls || [];
 
     await supabase.from('import_jobs').update({ status: 'running' }).eq('id', jobId);
+
+    // Handle retry mode: use retryUrls directly
+    if (config.retryUrls && config.retryUrls.length > 0 && productUrls.length === 0) {
+      productUrls = config.retryUrls;
+      console.log(`Retry mode: ${productUrls.length} URLs to reimport`);
+      await supabase.from('import_jobs').update({
+        total_items: productUrls.length, config: { ...config, productUrls },
+      }).eq('id', jobId);
+    }
 
     // Step 1: Map site if no URLs stored yet
     if (productUrls.length === 0) {

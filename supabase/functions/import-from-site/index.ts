@@ -491,7 +491,7 @@ serve(async (req) => {
     };
 
     let shouldContinue = false;
-    const PARALLEL_BATCH_SIZE = 15;
+    const PARALLEL_BATCH_SIZE = 50;
 
     // Filter URLs not yet processed
     const pendingUrls = productUrls.filter((url: string) => {

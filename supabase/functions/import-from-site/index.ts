@@ -43,10 +43,12 @@ async function scrapeProductJson(url: string, apiKey: string) {
         { type: 'json', schema: productSchema, prompt: SCRAPE_PROMPT },
       ],
       onlyMainContent: true,
-      timeout: 60000,
-      waitFor: 8000,
+      timeout: 30000,
+      waitFor: 3000,
     }),
   });
+
+  console.log(`Scrape response for ${url}: status=${response.status}`);
 
   if (response.status === 402) return { error: 'credits_exhausted' };
   if (response.status === 429) return { error: 'rate_limited' };
@@ -132,6 +134,7 @@ serve(async (req) => {
     let processed = 0, success = 0, errors = 0, skipped = 0;
 
     for (const url of productUrls) {
+      console.log(`[${processed + 1}/${productUrls.length}] Scraping: ${url}`);
       try {
         const result = await scrapeProductJson(url, firecrawlApiKey);
 
@@ -151,6 +154,7 @@ serve(async (req) => {
         }
 
         if (result.error || !result.data) {
+          console.error(`Scrape failed for ${url}: ${result.error || 'no data returned'}`);
           errors++; processed++; continue;
         }
 
@@ -196,6 +200,7 @@ serve(async (req) => {
           console.error(`Insert error for ${name}:`, insertError.message);
           errors++;
         } else {
+          console.log(`✅ Imported: ${name} - R$${product.price}`);
           success++;
         }
       } catch (error) {

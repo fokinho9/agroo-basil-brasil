@@ -120,8 +120,10 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
   const [siteUrl, setSiteUrl] = useState('https://www.cavalariashop.com.br/');
   const [categoryId, setCategoryId] = useState('');
   const [isStarting, setIsStarting] = useState(false);
+  const [dismissedJobId, setDismissedJobId] = useState<string | null>(null);
 
-  const { data: activeJob, refetch: refetchJob } = useActiveImportJob('site-import');
+  const { data: rawActiveJob, refetch: refetchJob } = useActiveImportJob('site-import');
+  const activeJob = rawActiveJob && rawActiveJob.id !== dismissedJobId ? rawActiveJob : null;
 
   const handleStart = async () => {
     if (!siteUrl.trim()) {
@@ -157,6 +159,7 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
       }
 
       toast.success('Importação iniciada! Acompanhe o progresso abaixo.');
+      setDismissedJobId(null);
       refetchJob();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao iniciar importação');
@@ -236,7 +239,7 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
 
             <PaginatedLogs logs={logs} />
 
-            <Button onClick={() => { refetchJob(); onComplete(); }}>
+            <Button onClick={() => { setDismissedJobId(activeJob.id); onComplete(); }}>
               Iniciar Nova Importação
             </Button>
           </div>

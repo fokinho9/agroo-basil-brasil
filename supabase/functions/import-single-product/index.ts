@@ -148,15 +148,9 @@ Deno.serve(async (req) => {
     // Addons
     const addons = parseAddonsFromHtml(rawHtml);
 
-    // Check duplicate
-    const { data: existing } = await supabase.from('products').select('id').ilike('name', extracted.title).limit(1);
-    if (existing?.length) {
-      return new Response(JSON.stringify({ success: true, productId: existing[0].id, message: 'Product already exists', url: `/produto/${existing[0].id}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Combine variants + addons
+    const allVariants = [...variants, ...addons.map(a => ({ addon: true, ...a }))];
 
-    // Insert
     const images = (extracted.images || []).filter((img: string) => img.startsWith('http'));
     const productData: any = {
       name: extracted.title,
@@ -168,9 +162,24 @@ Deno.serve(async (req) => {
       category_id: categoryId,
       stock: 10,
       active: true,
-      variants: variants.length > 0 ? variants : [],
+      variants: allVariants.length > 0 ? allVariants : [],
       source_url: url,
     };
+
+    // Check duplicate - update if exists
+    const { data: existing } = await supabase.from('products').select('id').ilike('name', extracted.title).limit(1);
+    if (existing?.length) {
+      const { error: updateError } = await supabase.from('products')
+        .update({ variants: productData.variants, description: productData.description, category_id: productData.category_id })
+        .eq('id', existing[0].id);
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      console.log(`🔄 Updated: ${extracted.title} -> ${existing[0].id}`);
+      return new Response(JSON.stringify({ success: true, productId: existing[0].id, message: 'Product updated', url: `/produto/${existing[0].id}`, addons: addons.length, variants: variants.length }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: product, error: insertError } = await supabase.from('products').insert(productData).select('id').single();
     if (insertError) {

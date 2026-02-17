@@ -9,6 +9,7 @@ export function useCategories() {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .order('display_order')
         .order('name');
 
       if (error) throw error;
@@ -21,7 +22,7 @@ export function useCreateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (category: { name: string; slug: string }) => {
+    mutationFn: async (category: { name: string; slug: string; parent_id?: string | null }) => {
       const { data, error } = await supabase
         .from('categories')
         .insert(category)
@@ -41,7 +42,7 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...category }: { id: string; name: string; slug: string }) => {
+    mutationFn: async ({ id, ...category }: { id: string; name?: string; slug?: string; parent_id?: string | null; display_order?: number }) => {
       const { data, error } = await supabase
         .from('categories')
         .update(category)
@@ -68,6 +69,24 @@ export function useDeleteCategory() {
         .delete()
         .eq('id', id);
 
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+}
+
+export function useBulkUpdateCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: { id: string; parent_id: string | null; display_order: number }[]) => {
+      const promises = updates.map(({ id, parent_id, display_order }) =>
+        supabase.from('categories').update({ parent_id, display_order }).eq('id', id)
+      );
+      const results = await Promise.all(promises);
+      const error = results.find(r => r.error)?.error;
       if (error) throw error;
     },
     onSuccess: () => {

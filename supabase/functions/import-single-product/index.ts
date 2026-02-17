@@ -58,27 +58,32 @@ function parseColorVariants(html: string, baseUrl: string) {
 
 function parseAddonsFromHtml(html: string) {
   const addons: any[] = [];
-  // Match the entire complements container more broadly
-  const complementsMatch = html.match(/id="js-product_addons[^"]*"[^>]*>([\s\S]*?)(?=<\/div>\s*<\/div>\s*$|<div[^>]*class="product-|<div[^>]*id="(?!addon))/i);
-  // Fallback: just find all complements-content blocks in the whole HTML
-  const section = complementsMatch ? complementsMatch[1] : html;
-  const blockRegex = /<div\s+class="complements-content">([\s\S]*?)<\/div>\s*(?=<div\s+class="complements-content"|<\/div>)/gi;
-  let block;
-  while ((block = blockRegex.exec(section)) !== null) {
-    const content = block[1];
-    const labelMatch = content.match(/addon-id="(\d+)"[^>]*addon-price="([^"]*)"[^>]*data-addon-is-optional="([^"]*)"[^>]*[^>]*>\s*([\s\S]*?)\s*<\/label>/i);
-    if (!labelMatch) continue;
+  // Find all labels with addon-id attribute anywhere in the HTML
+  const labelRegex = /<label[^>]*addon-id="(\d+)"[^>]*addon-price="([^"]*)"[^>]*data-addon-is-optional="([^"]*)"[^>]*>\s*([\s\S]*?)\s*<\/label>/gi;
+  let labelMatch;
+  while ((labelMatch = labelRegex.exec(html)) !== null) {
     const addonId = labelMatch[1];
     const isOptional = labelMatch[3].toLowerCase() === 'true';
-    const label = labelMatch[4].replace(/\*\s*$/, '').replace(/:\s*$/, '').trim();
-    const selectMatch = content.match(/<select[^>]*>([\s\S]*?)<\/select>/i);
-    if (selectMatch) {
-      const options: string[] = [];
-      const optRegex = /<option\s+value="([^"]*)"[^>]*>/gi;
-      let opt;
-      while ((opt = optRegex.exec(selectMatch[1])) !== null) options.push(opt[1].trim());
-      addons.push({ id: addonId, label, type: 'select', required: !isOptional, options });
-    } else if (content.match(/<input[^>]*type="text"/i)) {
+    const label = labelMatch[4].replace(/\*\s*$/g, '').replace(/:\s*$/g, '').replace(/\n/g, ' ').trim();
+    
+    // Look for the next form element after this label
+    const afterLabel = html.substring(labelMatch.index + labelMatch[0].length, labelMatch.index + labelMatch[0].length + 3000);
+    
+    // Find positions of first input and first select
+    const inputPos = afterLabel.search(/<input[^>]*type="text"/i);
+    const selectPos = afterLabel.search(/<select[^>]*>/i);
+    
+    // If select exists and comes before input (or no input), it's a select addon
+    if (selectPos >= 0 && (inputPos < 0 || selectPos < inputPos)) {
+      const selectMatch = afterLabel.match(/<select[^>]*>([\s\S]*?)<\/select>/i);
+      if (selectMatch) {
+        const options: string[] = [];
+        const optRegex = /<option\s+value="([^"]*)"[^>]*>/gi;
+        let opt;
+        while ((opt = optRegex.exec(selectMatch[1])) !== null) options.push(opt[1].trim());
+        addons.push({ id: addonId, label, type: 'select', required: !isOptional, options });
+      }
+    } else {
       addons.push({ id: addonId, label, type: 'text', required: !isOptional });
     }
   }

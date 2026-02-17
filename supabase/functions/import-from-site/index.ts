@@ -373,10 +373,19 @@ serve(async (req) => {
       });
     }
 
-    if (job.status === 'failed' || job.status === 'completed') {
+    if (job.status === 'completed') {
       return new Response(JSON.stringify({ error: 'Job already finished', status: job.status }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Allow resuming failed/cancelled jobs
+    if (job.status === 'failed') {
+      console.log(`Resuming failed job ${jobId} from ${job.processed_items || 0} processed items`);
+      await supabase.from('import_jobs').update({ 
+        status: 'running', 
+        error_message: null 
+      }).eq('id', jobId);
     }
 
     const config = job.config as { siteUrl: string; categoryId: string; productUrls?: string[] };

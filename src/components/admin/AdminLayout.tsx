@@ -13,6 +13,7 @@ import {
   Tags,
   FileUp,
   ShoppingBag,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ interface AdminLayoutProps {
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/fokinho/dashboard' },
+  { icon: BarChart3, label: 'Analytics', path: '/fokinho/analytics' },
   { icon: Package, label: 'Produtos', path: '/fokinho/produtos' },
   { icon: Tags, label: 'Categorias', path: '/fokinho/categorias' },
   { icon: ShoppingCart, label: 'Pedidos', path: '/fokinho/pedidos' },

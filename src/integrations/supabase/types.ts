@@ -310,6 +310,60 @@ export type Database = {
         }
         Relationships: []
       }
+      page_views: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          device_type: string | null
+          id: string
+          ip_hash: string | null
+          path: string
+          referrer: string | null
+          region: string | null
+          session_id: string
+          source_label: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          ip_hash?: string | null
+          path: string
+          referrer?: string | null
+          region?: string | null
+          session_id: string
+          source_label?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          ip_hash?: string | null
+          path?: string
+          referrer?: string | null
+          region?: string | null
+          session_id?: string
+          source_label?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean | null
@@ -451,7 +505,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_page_views: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

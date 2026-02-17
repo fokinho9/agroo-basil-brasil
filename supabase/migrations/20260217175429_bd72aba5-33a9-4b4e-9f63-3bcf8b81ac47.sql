@@ -1,0 +1,1 @@
+UPDATE categories SET name = 'Produtos Agro Brasil', slug = 'produtos-agro-brasil' WHERE slug = 'produtos-cavalaria-02';

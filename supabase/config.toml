@@ -1,1 +1,4 @@
 project_id = "zugcumtokvyszishwcwh"
+
+[functions.import-from-site]
+verify_jwt = false

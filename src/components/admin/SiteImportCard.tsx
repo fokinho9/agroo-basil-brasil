@@ -179,6 +179,24 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
     toast.info('Importação cancelada');
   };
 
+  const handleResume = async () => {
+    if (!activeJob) return;
+    setIsStarting(true);
+    try {
+      setDismissedJobId(null);
+      const { error: fnError } = await supabase.functions.invoke('import-from-site', {
+        body: { jobId: activeJob.id },
+      });
+      if (fnError) throw fnError;
+      toast.success('Importação retomada de onde parou!');
+      refetchJob();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao retomar importação');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   const isRunning = activeJob?.status === 'running' || activeJob?.status === 'pending';
   const progress = activeJob?.total_items
     ? Math.round(((activeJob.processed_items || 0) / activeJob.total_items) * 100)
@@ -259,9 +277,23 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
 
             <PaginatedLogs logs={logs} />
 
-            <Button onClick={() => setDismissedJobId(activeJob.id)}>
-              Iniciar Nova Importação
-            </Button>
+            <div className="flex gap-2">
+              {(activeJob.processed_items || 0) < (activeJob.total_items || 0) && (
+                <Button onClick={handleResume} disabled={isStarting}>
+                  {isStarting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Retomando...
+                    </>
+                  ) : (
+                    'Continuar de onde parou'
+                  )}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setDismissedJobId(activeJob.id)}>
+                Iniciar Nova Importação
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">

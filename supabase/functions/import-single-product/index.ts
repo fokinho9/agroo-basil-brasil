@@ -58,26 +58,27 @@ function parseColorVariants(html: string, baseUrl: string) {
 
 function parseAddonsFromHtml(html: string) {
   const addons: any[] = [];
-  const complementsMatch = html.match(/id="js-product_addons[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i);
-  if (!complementsMatch) return addons;
-  const section = complementsMatch[1];
-  const blockRegex = /<div\s+class="complements-content">([\s\S]*?)<\/div>/gi;
+  // Match the entire complements container more broadly
+  const complementsMatch = html.match(/id="js-product_addons[^"]*"[^>]*>([\s\S]*?)(?=<\/div>\s*<\/div>\s*$|<div[^>]*class="product-|<div[^>]*id="(?!addon))/i);
+  // Fallback: just find all complements-content blocks in the whole HTML
+  const section = complementsMatch ? complementsMatch[1] : html;
+  const blockRegex = /<div\s+class="complements-content">([\s\S]*?)<\/div>\s*(?=<div\s+class="complements-content"|<\/div>)/gi;
   let block;
   while ((block = blockRegex.exec(section)) !== null) {
     const content = block[1];
-    const labelMatch = content.match(/addon-id="(\d+)"[^>]*addon-price="([^"]*)"[^>]*data-addon-is-optional="([^"]*)"[^>]*class="[^"]*">\s*([\s\S]*?)\s*<\/label>/i);
+    const labelMatch = content.match(/addon-id="(\d+)"[^>]*addon-price="([^"]*)"[^>]*data-addon-is-optional="([^"]*)"[^>]*[^>]*>\s*([\s\S]*?)\s*<\/label>/i);
     if (!labelMatch) continue;
     const addonId = labelMatch[1];
     const isOptional = labelMatch[3].toLowerCase() === 'true';
-    const label = labelMatch[4].replace(/\*$/, '').trim();
-    const selectMatch = content.match(/<select[^>]*id="addon-select-(\d+)"[^>]*>([\s\S]*?)<\/select>/i);
+    const label = labelMatch[4].replace(/\*\s*$/, '').replace(/:\s*$/, '').trim();
+    const selectMatch = content.match(/<select[^>]*>([\s\S]*?)<\/select>/i);
     if (selectMatch) {
       const options: string[] = [];
-      const optRegex = /<option\s+value="([^"]*)"[^>]*>[^<]*<\/option>/gi;
+      const optRegex = /<option\s+value="([^"]*)"[^>]*>/gi;
       let opt;
-      while ((opt = optRegex.exec(selectMatch[2])) !== null) options.push(opt[1].trim());
+      while ((opt = optRegex.exec(selectMatch[1])) !== null) options.push(opt[1].trim());
       addons.push({ id: addonId, label, type: 'select', required: !isOptional, options });
-    } else {
+    } else if (content.match(/<input[^>]*type="text"/i)) {
       addons.push({ id: addonId, label, type: 'text', required: !isOptional });
     }
   }

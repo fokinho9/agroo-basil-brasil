@@ -270,7 +270,7 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
               <Input
                 value={siteUrl}
                 onChange={(e) => setSiteUrl(e.target.value)}
-                placeholder="https://www.cavalariashop.com.br/"
+                placeholder="https://www.exemplo.com.br/"
               />
             </div>
 

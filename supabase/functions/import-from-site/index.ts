@@ -387,8 +387,48 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { jobId } = await req.json();
+    const body = await req.json();
 
+    // Cron health-check: find stuck jobs and resume them
+    if (body.checkStuck) {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: stuckJobs } = await supabase
+        .from('import_jobs')
+        .select('id, status, updated_at, processed_items, total_items')
+        .in('status', ['running', 'pending'])
+        .lt('updated_at', fiveMinAgo);
+
+      if (!stuckJobs || stuckJobs.length === 0) {
+        return new Response(JSON.stringify({ message: 'No stuck jobs found' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Resume the first stuck job by self-invoking with its jobId
+      const stuckJob = stuckJobs[0];
+      console.log(`🔄 Cron: Found stuck job ${stuckJob.id} (${stuckJob.processed_items}/${stuckJob.total_items}), resuming...`);
+      
+      // Mark as failed so the resume logic kicks in
+      await supabase.from('import_jobs').update({ 
+        status: 'failed', 
+        error_message: 'Auto-recovery: job was stuck' 
+      }).eq('id', stuckJob.id);
+
+      // Self-invoke with the jobId
+      const supabaseUrl2 = Deno.env.get('SUPABASE_URL')!;
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
+      fetch(`${supabaseUrl2}/functions/v1/import-from-site`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}` },
+        body: JSON.stringify({ jobId: stuckJob.id }),
+      }).catch(() => {});
+
+      return new Response(JSON.stringify({ resumed: stuckJob.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const jobId = body.jobId;
     if (!jobId) {
       return new Response(JSON.stringify({ error: 'jobId is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

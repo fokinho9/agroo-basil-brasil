@@ -506,6 +506,8 @@ export type Database = {
     }
     Functions: {
       cleanup_old_page_views: { Args: never; Returns: undefined }
+      schedule_import_monitor: { Args: never; Returns: undefined }
+      unschedule_import_monitor: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

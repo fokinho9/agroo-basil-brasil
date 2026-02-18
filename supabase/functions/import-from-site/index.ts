@@ -399,6 +399,19 @@ serve(async (req) => {
         .lt('updated_at', fiveMinAgo);
 
       if (!stuckJobs || stuckJobs.length === 0) {
+        // No stuck jobs - check if there are ANY active jobs at all
+        const { data: activeJobs } = await supabase
+          .from('import_jobs')
+          .select('id')
+          .in('status', ['running', 'pending'])
+          .limit(1);
+
+        if (!activeJobs || activeJobs.length === 0) {
+          // No active jobs at all - unschedule cron to save resources
+          console.log('🛑 Cron: No active import jobs, unscheduling monitor...');
+          await supabase.rpc('unschedule_import_monitor');
+        }
+
         return new Response(JSON.stringify({ message: 'No stuck jobs found' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

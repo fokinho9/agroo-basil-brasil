@@ -92,6 +92,9 @@ export function useCreateImportJob() {
 
       if (insertError) throw insertError;
 
+      // Ensure the cron monitor is scheduled
+      try { await supabase.rpc('schedule_import_monitor' as any); } catch {}
+
       // Trigger the edge function to process the job
       const { error: fnError } = await supabase.functions.invoke('process-import-job', {
         body: { jobId: newJob.id },

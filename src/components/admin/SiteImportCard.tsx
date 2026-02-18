@@ -146,6 +146,9 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
 
       if (insertError) throw insertError;
 
+      // Schedule cron monitor as safety net
+      try { await supabase.rpc('schedule_import_monitor' as any); } catch {}
+
       const { error: fnError } = await supabase.functions.invoke('import-from-site', {
         body: { jobId: newJob.id },
       });
@@ -184,8 +187,10 @@ export function SiteImportCard({ categories, onComplete }: SiteImportCardProps) 
     setIsStarting(true);
     try {
       setDismissedJobId(null);
+      // Schedule cron monitor as safety net
+      try { await supabase.rpc('schedule_import_monitor' as any); } catch {}
       const { error: fnError } = await supabase.functions.invoke('import-from-site', {
-        body: { jobId: activeJob.id },
+        body: { jobId: activeJob.id, forceResume: true },
       });
       if (fnError) throw fnError;
       toast.success('Importação retomada de onde parou!');

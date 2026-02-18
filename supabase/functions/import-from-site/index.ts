@@ -391,50 +391,51 @@ serve(async (req) => {
 
     // Cron health-check: find stuck jobs and resume them
     if (body.checkStuck) {
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data: stuckJobs } = await supabase
+      // Check for ANY active jobs (running or pending)
+      const { data: activeJobs } = await supabase
         .from('import_jobs')
         .select('id, status, updated_at, processed_items, total_items')
         .in('status', ['running', 'pending'])
-        .lt('updated_at', fiveMinAgo);
+        .order('updated_at', { ascending: false })
+        .limit(5);
 
-      if (!stuckJobs || stuckJobs.length === 0) {
-        // No stuck jobs - check if there are ANY active jobs at all
-        const { data: activeJobs } = await supabase
-          .from('import_jobs')
-          .select('id')
-          .in('status', ['running', 'pending'])
-          .limit(1);
-
-        if (!activeJobs || activeJobs.length === 0) {
-          // No active jobs at all - unschedule cron to save resources
-          console.log('🛑 Cron: No active import jobs, unscheduling monitor...');
-          await supabase.rpc('unschedule_import_monitor');
-        }
-
-        return new Response(JSON.stringify({ message: 'No stuck jobs found' }), {
+      if (!activeJobs || activeJobs.length === 0) {
+        // No active jobs at all - unschedule cron to save resources
+        console.log('🛑 Cron: No active import jobs, unscheduling monitor...');
+        await supabase.rpc('unschedule_import_monitor');
+        return new Response(JSON.stringify({ message: 'No active jobs, cron unscheduled' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Resume the first stuck job by self-invoking with its jobId
+      // Check for stuck jobs (not updated in 3 minutes)
+      const threeMinAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      const stuckJobs = activeJobs.filter(j => j.updated_at < threeMinAgo);
+
+      if (stuckJobs.length === 0) {
+        console.log(`✅ Cron: ${activeJobs.length} active jobs, none stuck`);
+        return new Response(JSON.stringify({ message: 'No stuck jobs found', active: activeJobs.length }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Resume the first stuck job - DON'T mark as failed, just re-invoke directly
       const stuckJob = stuckJobs[0];
       console.log(`🔄 Cron: Found stuck job ${stuckJob.id} (${stuckJob.processed_items}/${stuckJob.total_items}), resuming...`);
       
-      // Mark as failed so the resume logic kicks in
+      // Touch updated_at so the cron doesn't immediately re-trigger
       await supabase.from('import_jobs').update({ 
-        status: 'failed', 
-        error_message: 'Auto-recovery: job was stuck' 
+        updated_at: new Date().toISOString() 
       }).eq('id', stuckJob.id);
 
-      // Self-invoke with the jobId
+      // Self-invoke with the jobId to resume processing
       const supabaseUrl2 = Deno.env.get('SUPABASE_URL')!;
-      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
       fetch(`${supabaseUrl2}/functions/v1/import-from-site`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
         body: JSON.stringify({ jobId: stuckJob.id }),
-      }).catch(() => {});
+      }).catch(err => console.error('Cron self-invoke error:', err));
 
       return new Response(JSON.stringify({ resumed: stuckJob.id }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -463,8 +464,14 @@ serve(async (req) => {
       });
     }
 
-    // Allow resuming failed/cancelled jobs
+    // Allow resuming failed/cancelled jobs - but only user-cancelled ones stop
     if (job.status === 'failed') {
+      const isCancelled = job.error_message?.includes('Cancelado') || job.error_message?.includes('Cancelled');
+      if (isCancelled && !body.forceResume) {
+        return new Response(JSON.stringify({ error: 'Job was cancelled by user', status: job.status }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       console.log(`Resuming failed job ${jobId} from ${job.processed_items || 0} processed items`);
       await supabase.from('import_jobs').update({ 
         status: 'running', 
@@ -563,13 +570,19 @@ serve(async (req) => {
 
     // Process in parallel batches of PARALLEL_BATCH_SIZE
     for (let batchStart = 0; batchStart < pendingUrls.length; batchStart += PARALLEL_BATCH_SIZE) {
-      // Check cancellation
+      // Check cancellation - only stop if explicitly cancelled by user
       if (processed > 0) {
-        const { data: freshJob } = await supabase.from('import_jobs').select('status').eq('id', jobId).single();
+        const { data: freshJob } = await supabase.from('import_jobs').select('status, error_message').eq('id', jobId).single();
         if (freshJob?.status === 'failed') {
-          console.log('Job cancelled'); return new Response(JSON.stringify({ cancelled: true }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          const isCancelled = freshJob.error_message?.includes('Cancelado') || freshJob.error_message?.includes('Cancelled');
+          if (isCancelled) {
+            console.log('Job cancelled by user'); return new Response(JSON.stringify({ cancelled: true }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          // Not user-cancelled - restore to running (cron or transient issue)
+          console.log('⚠️ Job marked failed but not by user, restoring to running...');
+          await supabase.from('import_jobs').update({ status: 'running', error_message: null }).eq('id', jobId);
         }
       }
 
@@ -727,21 +740,33 @@ serve(async (req) => {
 
     if (shouldContinue) {
       console.log('Self-invoking...');
-      fetch(`${supabaseUrl}/functions/v1/import-from-site`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
-        body: JSON.stringify({ jobId }),
-      }).catch(err => console.error('Self-invoke error:', err));
+      // Use service role key for reliable self-invocation
+      try {
+        const resp = await fetch(`${supabaseUrl}/functions/v1/import-from-site`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ jobId }),
+        });
+        if (!resp.ok) {
+          console.error(`Self-invoke failed with status ${resp.status}, cron will recover`);
+        }
+      } catch (err) {
+        console.error('Self-invoke error, cron will recover:', err);
+      }
 
       return new Response(JSON.stringify({ continuing: true, processed, successCount: success }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Job completed - unschedule cron
     await supabase.from('import_jobs').update({
       status: 'completed', processed_items: processed, success_count: success,
       error_count: errors, results: { skipped, merged, logs }, completed_at: new Date().toISOString(),
     }).eq('id', jobId);
+
+    // Unschedule cron if no other active jobs
+    try { await supabase.rpc('unschedule_import_monitor'); } catch {}
 
     console.log(`Done: ${success} imported, ${merged} merged, ${errors} errors, ${skipped} skipped`);
 

@@ -128,6 +128,16 @@ export function Header() {
     return categoryTree.filter(c => c.children.length > 0);
   }, [categoryTree]);
 
+  // Find Chapéus category for direct nav link
+  const chapeuCategory = useMemo(() => {
+    for (const root of categoryTree) {
+      for (const child of root.children || []) {
+        if (child.slug === 'vestuario-chapeus') return child;
+      }
+    }
+    return null;
+  }, [categoryTree]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -211,9 +221,17 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            {parentCategories.slice(0, 6).map((category) => (
+            {parentCategories.slice(0, 5).map((category) => (
               <DesktopCategoryDropdown key={category.id} category={category} />
             ))}
+            {chapeuCategory && (
+              <Link
+                to={`/categoria/${chapeuCategory.slug}`}
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                {chapeuCategory.name}
+              </Link>
+            )}
           </nav>
 
           {/* Search Bar Desktop */}

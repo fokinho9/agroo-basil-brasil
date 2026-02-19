@@ -4,14 +4,9 @@ import { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Import banner images
-import selasDesktop from '@/assets/banners/selas-desktop.jpg';
-import selasMobile from '@/assets/banners/selas-mobile.png';
-import jeansDesktop from '@/assets/banners/jeans-desktop.jpg';
-import jeansMobile from '@/assets/banners/jeans-mobile.png';
-import capaceteDesktop from '@/assets/banners/capacete-desktop.jpg';
-import capaceteMobile from '@/assets/banners/capacete-mobile.png';
-import boleteirasDesktop from '@/assets/banners/boleteiras-desktop.jpg';
-import boleiteirasMobile from '@/assets/banners/boleteiras-mobile.png';
+import calcasWrangler from '@/assets/banners/calcas-wrangler.png';
+import mantaUltimate from '@/assets/banners/manta-ultimate.png';
+import pralanaChapeus from '@/assets/banners/pralana-chapeus.png';
 
 interface BannerItem {
   id: number;
@@ -24,31 +19,24 @@ interface BannerItem {
 const banners: BannerItem[] = [
   {
     id: 1,
-    desktopImage: selasDesktop,
-    mobileImage: selasMobile,
-    title: 'Selas 3 Tambores',
-    link: '/produtos',
+    desktopImage: calcasWrangler,
+    mobileImage: calcasWrangler,
+    title: 'Calças Wrangler',
+    link: '/categoria/vestuario-calcas',
   },
   {
     id: 2,
-    desktopImage: jeansDesktop,
-    mobileImage: jeansMobile,
-    title: 'Liquidação Calça Jeans',
-    link: '/produtos',
+    desktopImage: mantaUltimate,
+    mobileImage: mantaUltimate,
+    title: 'Manta Ultimate Pad',
+    link: '/categoria/mantas-e-protecao-para-cavalo',
   },
   {
     id: 3,
-    desktopImage: capaceteDesktop,
-    mobileImage: capaceteMobile,
-    title: 'Capacetes Troxel Spirit',
-    link: '/produtos',
-  },
-  {
-    id: 4,
-    desktopImage: boleteirasDesktop,
-    mobileImage: boleiteirasMobile,
-    title: 'Kit Boleteiras',
-    link: '/produtos',
+    desktopImage: pralanaChapeus,
+    mobileImage: pralanaChapeus,
+    title: 'Chapéus Pralana',
+    link: '/categoria/vestuario-chapeus',
   },
 ];
 

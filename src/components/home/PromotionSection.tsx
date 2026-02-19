@@ -6,7 +6,7 @@ import { ProductGrid } from '@/components/products/ProductGrid';
 import { useDiscountedProducts } from '@/hooks/useProducts';
 
 export function PromotionSection() {
-  const { data: products, isLoading } = useDiscountedProducts(8);
+  const { data: products, isLoading } = useDiscountedProducts(12);
 
   if (!isLoading && (!products || products.length === 0)) {
     return null;

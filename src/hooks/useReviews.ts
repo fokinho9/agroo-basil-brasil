@@ -57,8 +57,8 @@ export function useDeleteReview() {
   });
 }
 
-// Generate fake reviews for products
-export function generateFakeReviews(productId: string, count: number): Omit<Review, 'id' | 'created_at'>[] {
+// Generate fake reviews contextualized to the product
+export function generateFakeReviews(productId: string, count: number, productName?: string): Omit<Review, 'id' | 'created_at'>[] {
   const reviewerNames = [
     'Maria Silva', 'João Santos', 'Ana Costa', 'Carlos Oliveira', 'Patricia Lima',
     'Fernando Souza', 'Juliana Pereira', 'Ricardo Almeida', 'Camila Ferreira', 'Bruno Ribeiro',
@@ -68,7 +68,8 @@ export function generateFakeReviews(productId: string, count: number): Omit<Revi
     'André Castro', 'Vanessa Correia', 'Felipe Azevedo', 'Natália Vieira', 'Rodrigo Nascimento'
   ];
 
-  const positiveComments = [
+  // Generic positive comments
+  const genericComments = [
     'Produto excelente! Superou minhas expectativas. Recomendo muito!',
     'Entrega rápida e produto de alta qualidade. Muito satisfeito!',
     'Ótimo custo-benefício, vou comprar novamente com certeza.',
@@ -84,50 +85,107 @@ export function generateFakeReviews(productId: string, count: number): Omit<Revi
     'Comprei para presente e a pessoa amou, muito bom!',
     'Preço justo para a qualidade oferecida, aprovado!',
     'Já indiquei para vários amigos, todos gostaram.',
-    'Produto de primeira linha, acabamento perfeito!',
-    'Superou expectativas, chegou rápido e bem embalado.',
-    'Ótima opção para quem busca qualidade e bom preço.',
-    'Estou muito satisfeito com minha compra, recomendo!',
-    'Produto fantástico, voltarei a comprar com certeza.',
-    'Atendimento excelente e produto de alta qualidade.',
-    'Melhor loja para comprar, produtos sempre originais!',
-    'Frete rápido e produto impecável, nota máxima!',
-    'Qualidade surpreendente pelo preço, muito bom!',
-    'Produto chegou certinho, sem nenhum problema.',
-    'Recomendo de olhos fechados, produto top demais!',
-    'Comprei com receio mas o produto é excelente!',
-    'Superou todas as expectativas, muito satisfeito!',
-    'Produto de qualidade premium, adorei a compra!',
-    'Experiência de compra perfeita do início ao fim.'
   ];
+
+  // Contextual comments based on product name keywords
+  const contextualComments: Record<string, string[]> = {
+    'manta': [
+      'Manta de excelente qualidade, meu cavalo ficou super confortável!',
+      'Acabamento perfeito, protege muito bem o dorso do animal.',
+      'Manta muito macia e resistente, uso todos os dias no treino.',
+      'Material top, não esquenta demais e absorve bem o impacto.',
+    ],
+    'sela': [
+      'Sela muito confortável, tanto pro cavaleiro quanto pro cavalo!',
+      'Acabamento impecável, couro de primeira qualidade.',
+      'Uso pra treino de tambor e é perfeita, super leve.',
+      'Sela resistente e bonita, valeu o investimento!',
+    ],
+    'cabresto': [
+      'Cabresto muito resistente, material de primeira!',
+      'Personalização ficou linda, todos elogiam no haras.',
+      'Durável e bonito, já comprei vários pra toda a tropa.',
+    ],
+    'freio': [
+      'Freio de ótima qualidade, bocal suave pro cavalo.',
+      'Acabamento impecável, meu cavalo aceitou super bem.',
+      'Material resistente, inox de verdade, não enferruja.',
+    ],
+    'bota': [
+      'Bota muito confortável e resistente, uso todo dia!',
+      'Qualidade excelente, couro macio e durável.',
+      'Perfeita para o trabalho no campo, super recomendo.',
+    ],
+    'espora': [
+      'Espora de qualidade, acabamento impecável!',
+      'Material resistente e design bonito, adorei.',
+      'Perfeita, fivela de inox muito boa.',
+    ],
+    'camis': [
+      'Camiseta muito confortável, tecido de qualidade!',
+      'Estampa bonita e não desbota na lavagem.',
+      'Ótimo caimento, comprei de várias cores.',
+    ],
+    'rédea': [
+      'Rédea de couro excelente, muito resistente!',
+      'Acabamento top, pegada firme e confortável.',
+      'Material durável, uso diariamente sem problemas.',
+    ],
+    'cabeçada': [
+      'Cabeçada linda, couro de primeira qualidade!',
+      'Ajuste perfeito, meu cavalo ficou muito bonito.',
+      'Resistente e com acabamento impecável.',
+    ],
+    'chapéu': [
+      'Chapéu lindo e resistente, protege bem do sol!',
+      'Acabamento excelente, tamanho perfeito.',
+      'Uso todo dia no campo, durável e confortável.',
+    ],
+  };
+
+  // Find contextual comments for the product
+  const productLower = (productName || '').toLowerCase();
+  let relevantComments = [...genericComments];
+  
+  for (const [keyword, comments] of Object.entries(contextualComments)) {
+    if (productLower.includes(keyword)) {
+      relevantComments = [...comments, ...genericComments];
+      break;
+    }
+  }
 
   const reviews: Omit<Review, 'id' | 'created_at'>[] = [];
   const usedNames = new Set<string>();
   const usedComments = new Set<string>();
 
   for (let i = 0; i < count; i++) {
-    // Get unique reviewer name
     let name = reviewerNames[Math.floor(Math.random() * reviewerNames.length)];
     while (usedNames.has(name) && usedNames.size < reviewerNames.length) {
       name = reviewerNames[Math.floor(Math.random() * reviewerNames.length)];
     }
     usedNames.add(name);
 
-    // Get unique comment
-    let comment = positiveComments[Math.floor(Math.random() * positiveComments.length)];
-    while (usedComments.has(comment) && usedComments.size < positiveComments.length) {
-      comment = positiveComments[Math.floor(Math.random() * positiveComments.length)];
+    let comment = relevantComments[Math.floor(Math.random() * relevantComments.length)];
+    while (usedComments.has(comment) && usedComments.size < relevantComments.length) {
+      comment = relevantComments[Math.floor(Math.random() * relevantComments.length)];
     }
     usedComments.add(comment);
 
-    // Rating between 4 and 5 (positive reviews)
-    const rating = Math.random() > 0.3 ? 5 : 4;
+    // Rating: mix of 3-5 stars (mostly 4-5)
+    const rand = Math.random();
+    const rating = rand > 0.85 ? 3 : rand > 0.4 ? 5 : 4;
+
+    // Random date in the last 6 months
+    const daysAgo = Math.floor(Math.random() * 180) + 1;
+    const reviewDate = new Date();
+    reviewDate.setDate(reviewDate.getDate() - daysAgo);
 
     reviews.push({
       product_id: productId,
       reviewer_name: name,
       rating,
       comment,
+      display_date: reviewDate.toISOString(),
     });
   }
 

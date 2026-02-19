@@ -5,116 +5,149 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface ProductData {
-  name: string;
-  price: number;
-  original_price: number;
-  source_url: string;
-  image_url: string;
-  category_id: string;
-  variants: { size: string }[];
-  description?: string;
-  images?: string[];
-}
-
-// Extract OG image from HTML
-function extractOgImage(html: string): string | null {
-  const match = html.match(/property="og:image"\s+content="([^"]+)"/);
-  return match ? match[1] : null;
-}
-
-// Extract product images from HTML
-function extractImages(html: string): string[] {
+// Extract product images from markdown (magazord CDN)
+function extractImagesFromMarkdown(markdown: string): string[] {
   const images: string[] = [];
-  // Match product images from magazord CDN
-  const regex = /https:\/\/texasfarmstore\.cdn\.magazord\.com\.br\/img\/\d{4}\/\d{2}\/produto\/\d+\/\d+\.jpg/g;
-  const matches = html.match(regex) || [];
-  const unique = [...new Set(matches)];
-  // Return high-res versions
-  return unique.map(url => url + '?ims=fit-in/800x800').slice(0, 6);
+  // Match high-res product images (fit-in/800x800 or fit-in/610x610)
+  const highResRegex = /https:\/\/texasfarmstore\.cdn\.magazord\.com\.br\/img\/\d{4}\/\d{2}\/produto\/\d+\/\d+\.jpg\?ims=fit-in\/(?:800x800|610x610)/g;
+  const highRes = markdown.match(highResRegex) || [];
+  
+  // Also match raw product images without size params
+  const rawRegex = /https:\/\/texasfarmstore\.cdn\.magazord\.com\.br\/img\/\d{4}\/\d{2}\/produto\/\d+\/\d+\.jpg/g;
+  const raw = markdown.match(rawRegex) || [];
+  
+  // Normalize all to 800x800
+  const allUrls = [...highRes, ...raw].map(url => {
+    const base = url.split('?')[0];
+    return base + '?ims=fit-in/800x800';
+  });
+  
+  const unique = [...new Set(allUrls)];
+  return unique.slice(0, 6);
 }
 
-// Extract description from markdown
-function extractDescription(markdown: string): string {
-  // Find "Descrição do produto" section
-  const descStart = markdown.indexOf('## Descrição do produto');
-  if (descStart === -1) {
-    const altStart = markdown.indexOf('Descrição do produto');
-    if (altStart === -1) return '';
-  }
-  
-  const start = markdown.indexOf('\n', markdown.indexOf('Descrição do produto')) + 1;
-  if (start <= 0) return '';
-  
-  // Find end markers
-  const endMarkers = ['## Características', '## Quem comprou', '## O que vem', '## Produtos Relacionados'];
-  let end = markdown.length;
-  for (const marker of endMarkers) {
-    const idx = markdown.indexOf(marker, start);
-    if (idx !== -1 && idx < end) end = idx;
-  }
-  
-  let desc = markdown.substring(start, end).trim();
-  // Clean up
-  desc = desc.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Remove links
-  desc = desc.replace(/!\[.*?\]\([^)]+\)/g, ''); // Remove images
-  desc = desc.replace(/\n{3,}/g, '\n\n').trim();
-  
-  return desc.substring(0, 2000);
-}
-
-// Extract sizes from markdown
-function extractSizes(markdown: string): string[] {
+// Extract sizes from markdown - improved patterns
+function extractSizesFromMarkdown(markdown: string, categoryType: string): string[] {
   const sizes: string[] = [];
   
-  // Calça sizes: 34-54
-  const calcaMatch = markdown.match(/Tamanho Calça.*?:([\s\S]*?)(?:\n\n|\*\*Garantia)/);
-  if (calcaMatch) {
-    const nums = calcaMatch[1].match(/\b(3[4-9]|4[0-9]|5[0-4])\b/g);
-    if (nums) sizes.push(...new Set(nums));
-  }
-  
-  // Chapéu sizes: 53-63 or P/M/G/GG
-  const chapeuMatch = markdown.match(/Tamanho Chapéu.*?:([\s\S]*?)(?:\n\n|\*\*Garantia)/);
-  if (chapeuMatch) {
-    const nums = chapeuMatch[1].match(/\b(5[3-9]|6[0-3])\b/g);
-    if (nums) sizes.push(...new Set(nums));
-  }
-  
-  const adultMatch = markdown.match(/Tamanho Adulto.*?:([\s\S]*?)(?:\n\n|\*\*Garantia)/);
-  if (adultMatch) {
-    const letters = adultMatch[1].match(/\b(PP|P|M|G|GG|XG)\b/g);
-    if (letters) sizes.push(...new Set(letters));
-  }
-  
-  // Calçado sizes: 34-45
-  const calcadoMatch = markdown.match(/Tamanho Calçado.*?:([\s\S]*?)(?:\n\n|\*\*Garantia)/);
-  if (calcadoMatch) {
-    const nums = calcadoMatch[1].match(/\b(3[4-9]|4[0-5])\b/g);
-    if (nums) sizes.push(...new Set(nums));
-  }
-  
-  // Generic size extraction from the product page content
-  if (sizes.length === 0) {
-    // Look for size buttons pattern
-    const sizePattern = /\n\s*(\d{2})\s*\n/g;
-    let match;
-    const foundSizes: string[] = [];
-    while ((match = sizePattern.exec(markdown)) !== null) {
-      const num = parseInt(match[1]);
-      if (num >= 34 && num <= 63) {
-        foundSizes.push(match[1]);
-      }
+  if (categoryType === 'botas') {
+    // "Tamanho Calçado Masculino (34 ao 45):" or individual size numbers
+    const calcadoMatch = markdown.match(/Tamanho\s+Cal[çc]ado.*?:([\s\S]*?)(?:\*\*Garantia|Garantia|Comprar)/i);
+    if (calcadoMatch) {
+      const nums = calcadoMatch[1].match(/\b(3[4-9]|4[0-5])\b/g);
+      if (nums) sizes.push(...new Set(nums));
     }
-    if (foundSizes.length >= 3) {
-      sizes.push(...new Set(foundSizes));
+    if (sizes.length === 0) {
+      // Default boot sizes
+      for (let i = 34; i <= 45; i++) sizes.push(String(i));
+    }
+  } else if (categoryType === 'calcas') {
+    const calcaMatch = markdown.match(/Tamanho\s+Cal[çc]a.*?:([\s\S]*?)(?:\*\*Garantia|Garantia|Comprar)/i);
+    if (calcaMatch) {
+      const nums = calcaMatch[1].match(/\b(3[4-9]|4[0-9]|5[0-4])\b/g);
+      if (nums) sizes.push(...new Set(nums));
+    }
+    if (sizes.length === 0) {
+      for (let i = 36; i <= 54; i += 2) sizes.push(String(i));
+    }
+  } else if (categoryType === 'chapeus') {
+    // Chapéu sizes: numeric 53-63 or letters
+    const chapeuMatch = markdown.match(/Tamanho\s+Chap[ée]u.*?:([\s\S]*?)(?:\*\*Garantia|Garantia|Comprar)/i);
+    if (chapeuMatch) {
+      const nums = chapeuMatch[1].match(/\b(5[3-9]|6[0-3])\b/g);
+      if (nums) sizes.push(...new Set(nums));
+    }
+    if (sizes.length === 0) {
+      for (let i = 53; i <= 61; i++) sizes.push(String(i));
+    }
+  } else {
+    // Generic: try P/M/G/GG
+    const adultMatch = markdown.match(/Tamanho\s+Adulto.*?:([\s\S]*?)(?:\*\*Garantia|Garantia|Comprar)/i);
+    if (adultMatch) {
+      const letters = adultMatch[1].match(/\b(PP|P|M|G|GG|XG)\b/g);
+      if (letters) sizes.push(...new Set(letters));
     }
   }
   
   return sizes;
 }
 
-async function scrapeProduct(url: string, firecrawlApiKey: string): Promise<{ markdown: string; html: string } | null> {
+// Extract description from markdown - improved
+function extractDescriptionFromMarkdown(markdown: string): string {
+  // Try multiple section headers
+  const headers = [
+    'Descrição do produto',
+    'Descrição',
+    'DETALHES DO PRODUTO',
+    'Detalhes do produto',
+    'Sobre o produto',
+    'SOBRE O PRODUTO',
+    'Informações',
+  ];
+  
+  for (const header of headers) {
+    const idx = markdown.indexOf(header);
+    if (idx === -1) continue;
+    
+    const start = markdown.indexOf('\n', idx) + 1;
+    if (start <= 0) continue;
+    
+    const endMarkers = ['## Quem comprou', '## O que vem', '## Produtos Relacionados', '## Seja a primeira', '## Características', '### Cuidados'];
+    let end = markdown.length;
+    for (const marker of endMarkers) {
+      const mIdx = markdown.indexOf(marker, start);
+      if (mIdx !== -1 && mIdx < end) end = mIdx;
+    }
+    
+    let desc = markdown.substring(start, end).trim();
+    desc = desc.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    desc = desc.replace(/!\[.*?\]\([^)]+\)/g, '');
+    desc = desc.replace(/R\$\s*[\d.,]+/g, '');
+    desc = desc.replace(/\n{3,}/g, '\n\n').trim();
+    
+    if (desc.length > 30) return desc.substring(0, 2000);
+  }
+  
+  // Fallback: extract content between product title and "Quem comprou" or "Garantia"
+  const titleMatch = markdown.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    const titleEnd = markdown.indexOf(titleMatch[0]) + titleMatch[0].length;
+    const endMarkers = ['## Quem comprou', '## Produtos Relacionados', '## Seja a primeira'];
+    let end = markdown.length;
+    for (const marker of endMarkers) {
+      const mIdx = markdown.indexOf(marker, titleEnd);
+      if (mIdx !== -1 && mIdx < end) end = mIdx;
+    }
+    
+    let content = markdown.substring(titleEnd, end);
+    // Extract only meaningful text lines
+    const lines = content.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 10)
+      .filter(l => !l.startsWith('!['))
+      .filter(l => !l.startsWith('R$'))
+      .filter(l => !l.match(/^\d{2}$/))
+      .filter(l => !l.match(/^(Comprar|OK|Calcule|Adicionar|Aceitar)/i))
+      .filter(l => !l.includes('magazord'))
+      .filter(l => !l.includes('formas de pagamento'));
+    
+    const desc = lines.join('\n').trim();
+    if (desc.length > 30) return desc.substring(0, 2000);
+  }
+  
+  return '';
+}
+
+function getCategoryType(categoryId: string): string {
+  const map: Record<string, string> = {
+    'a0000001-0000-0000-0000-000000000004': 'botas',
+    '7aea98f5-75dd-491b-a994-0fc14dd2ed32': 'calcas',
+    '6c6c18c3-07ae-42f1-a196-c0e81f1f237b': 'chapeus',
+  };
+  return map[categoryId] || 'generic';
+}
+
+async function scrapeProduct(url: string, firecrawlApiKey: string): Promise<string | null> {
   try {
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -124,7 +157,7 @@ async function scrapeProduct(url: string, firecrawlApiKey: string): Promise<{ ma
       },
       body: JSON.stringify({
         url,
-        formats: ['markdown', 'html'],
+        formats: ['markdown'],
         onlyMainContent: true,
         waitFor: 5000,
         timeout: 60000,
@@ -137,11 +170,8 @@ async function scrapeProduct(url: string, firecrawlApiKey: string): Promise<{ ma
     }
 
     const data = await response.json();
-    if (data.success && data.data) {
-      return {
-        markdown: data.data.markdown || '',
-        html: data.data.rawHtml || data.data.html || '',
-      };
+    if (data.success && data.data?.markdown) {
+      return data.data.markdown;
     }
     return null;
   } catch (error) {
@@ -163,8 +193,49 @@ Deno.serve(async (req) => {
 
     const { action, products, productIds } = await req.json();
 
+    if (action === 'set-variants-by-category') {
+      // Bulk set variants based on category
+      const categoryVariants: Record<string, any[]> = {
+        'a0000001-0000-0000-0000-000000000004': Array.from({length: 12}, (_, i) => ({size: String(34 + i)})), // Botas 34-45
+        '7aea98f5-75dd-491b-a994-0fc14dd2ed32': Array.from({length: 10}, (_, i) => ({size: String(36 + i * 2)})), // Calças 36-54
+        '6c6c18c3-07ae-42f1-a196-c0e81f1f237b': Array.from({length: 9}, (_, i) => ({size: String(53 + i)})), // Chapéus 53-61
+      };
+      
+      const results: any[] = [];
+      for (const [catId, variants] of Object.entries(categoryVariants)) {
+        // First get products that need variants
+        const { data: prods } = await supabase
+          .from('products')
+          .select('id, name, variants')
+          .eq('category_id', catId);
+        
+        const needsUpdate = (prods || []).filter(p => !p.variants || (Array.isArray(p.variants) && p.variants.length === 0) || p.variants === '[]');
+        
+        let updated = 0;
+        for (const p of needsUpdate) {
+          const { error: uErr } = await supabase
+            .from('products')
+            .update({ variants })
+            .eq('id', p.id);
+          if (!uErr) updated++;
+        }
+        
+        const error = null;
+        const data = needsUpdate;
+        
+        if (false) {
+          results.push({ category: catId, status: 'error' });
+        } else {
+          results.push({ category: catId, status: 'success', updated });
+        }
+      }
+      
+      return new Response(JSON.stringify({ success: true, results }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'insert') {
-      // Insert new products (chapéus and botas)
       const results: any[] = [];
       for (const product of products) {
         const { data: existing } = await supabase
@@ -206,17 +277,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (action === 'scrape-descriptions') {
+    if (action === 'scrape-details') {
       if (!firecrawlApiKey) {
         return new Response(JSON.stringify({ error: 'FIRECRAWL_API_KEY not configured' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Scrape product pages for descriptions, images, and sizes
       const { data: productsToScrape } = await supabase
         .from('products')
-        .select('id, name, source_url, description, variants, images')
+        .select('id, name, source_url, description, variants, images, category_id')
         .in('id', productIds)
         .order('name');
 
@@ -235,18 +305,19 @@ Deno.serve(async (req) => {
         }
 
         console.log(`Scraping: ${product.name}`);
-        const scraped = await scrapeProduct(product.source_url, firecrawlApiKey);
+        const markdown = await scrapeProduct(product.source_url, firecrawlApiKey);
         
-        if (!scraped) {
+        if (!markdown) {
           results.push({ id: product.id, name: product.name, status: 'scrape_failed' });
           continue;
         }
 
         const updates: any = {};
+        const categoryType = getCategoryType(product.category_id || '');
 
         // Extract description if missing
         if (!product.description || product.description.length < 20) {
-          const desc = extractDescription(scraped.markdown);
+          const desc = extractDescriptionFromMarkdown(markdown);
           if (desc.length > 20) {
             updates.description = desc;
           }
@@ -254,7 +325,7 @@ Deno.serve(async (req) => {
 
         // Extract sizes/variants if empty
         if (!product.variants || (Array.isArray(product.variants) && product.variants.length === 0)) {
-          const sizes = extractSizes(scraped.markdown);
+          const sizes = extractSizesFromMarkdown(markdown, categoryType);
           if (sizes.length > 0) {
             updates.variants = sizes.map(s => ({ size: s }));
           }
@@ -262,7 +333,7 @@ Deno.serve(async (req) => {
 
         // Extract images if missing
         if (!product.images || (Array.isArray(product.images) && product.images.length === 0)) {
-          const images = extractImages(scraped.html || scraped.markdown);
+          const images = extractImagesFromMarkdown(markdown);
           if (images.length > 0) {
             updates.images = images;
           }
@@ -282,8 +353,6 @@ Deno.serve(async (req) => {
               name: product.name, 
               status: 'success',
               updated: Object.keys(updates),
-              sizesFound: updates.variants?.length || 0,
-              descLength: updates.description?.length || 0,
             });
           }
         } else {

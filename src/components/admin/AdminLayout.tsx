@@ -14,6 +14,7 @@ import {
   FileUp,
   ShoppingBag,
   BarChart3,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const menuItems = [
   { icon: ShoppingBag, label: 'Carrinhos', path: '/fokinho/carrinhos' },
   { icon: Image, label: 'Banners', path: '/fokinho/banners' },
   { icon: FileUp, label: 'Importar', path: '/fokinho/importar' },
+  { icon: Users, label: 'Usuários', path: '/fokinho/usuarios' },
   { icon: Settings, label: 'Configurações', path: '/fokinho/configuracoes' },
 ];
 

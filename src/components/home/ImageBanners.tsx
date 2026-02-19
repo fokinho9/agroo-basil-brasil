@@ -12,7 +12,6 @@ import capaceteDesktop from '@/assets/banners/capacete-desktop.jpg';
 import capaceteMobile from '@/assets/banners/capacete-mobile.png';
 import boleteirasDesktop from '@/assets/banners/boleteiras-desktop.jpg';
 import boleiteirasMobile from '@/assets/banners/boleteiras-mobile.png';
-import mantaUltimatePadDesktop from '@/assets/banners/manta-ultimate-pad-desktop.jpg';
 
 interface BannerItem {
   id: number;
@@ -23,13 +22,6 @@ interface BannerItem {
 }
 
 const banners: BannerItem[] = [
-  {
-    id: 0,
-    desktopImage: mantaUltimatePadDesktop,
-    mobileImage: mantaUltimatePadDesktop,
-    title: 'Manta Ultimate Pad',
-    link: '/categoria/mantas',
-  },
   {
     id: 1,
     desktopImage: selasDesktop,

@@ -18,6 +18,7 @@ import { ProductVariantSelector } from '@/components/products/ProductVariantSele
 import { ProductAddons, ProductAddon } from '@/components/products/ProductAddons';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import reclameAquiBanner from '@/assets/banners/reclame-aqui.png';
 
 // Helper to convert **text** to bold
 function formatDescription(text: string): JSX.Element[] {
@@ -395,6 +396,11 @@ export default function ProductPage() {
             </div>
           </div>
         </>}
+
+      {/* Reclame Aqui Banner */}
+      <a href="https://reclameaqui.com.br" target="_blank" rel="noopener noreferrer" className="block my-8">
+        <img src={reclameAquiBanner} alt="Perfil Oficial no Reclame Aqui" className="w-full max-w-3xl rounded-xl" />
+      </a>
 
       {/* Reviews Section */}
       <Separator className="my-10" />

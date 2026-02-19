@@ -140,6 +140,27 @@ export function useShirtProducts(limit: number = 8) {
   });
 }
 
+export function useHatProducts(limit: number = 12) {
+  return useQuery({
+    queryKey: ['products', 'hats', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*)
+        `)
+        .eq('active', true)
+        .or('name.ilike.%chapeu%,name.ilike.%chapéu%')
+        .order('created_at', { ascending: false })
+        .limit(limit * 2);
+
+      if (error) throw error;
+      return filterDirectPurchase(data as Product[]).slice(0, limit);
+    },
+  });
+}
+
 export function useDirectPurchaseProducts(limit: number = 20) {
   return useQuery({
     queryKey: ['products', 'direct-purchase', limit],

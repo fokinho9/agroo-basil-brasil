@@ -9,11 +9,9 @@ import { ImageBanners } from '@/components/home/ImageBanners';
 import { AllProducts } from '@/components/home/AllProducts';
 import { PremiumProducts } from '@/components/home/PremiumProducts';
 import { MantasSection } from '@/components/home/MantasSection';
+import { CategoryProductsSection } from '@/components/home/CategoryProductsSection';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
-import mantasPromoDesktop from '@/assets/banners/mantas-promo-desktop.png';
 import selasDesktop from '@/assets/banners/selas-desktop.jpg';
 import jeansDesktop from '@/assets/banners/jeans-desktop.jpg';
 
@@ -26,9 +24,9 @@ const stats = [
   { icon: Timer, value: '24h', label: 'Atendimento Rápido' },
 ];
 
-function MidBanner({ image, alt, link, className = '' }: { image: string; alt: string; link: string; className?: string }) {
+function MidBanner({ image, alt, link }: { image: string; alt: string; link: string }) {
   return (
-    <section className={`py-4 md:py-6 ${className}`}>
+    <section className="py-4 md:py-6">
       <div className="container mx-auto px-4">
         <Link to={link} className="block">
           <img
@@ -45,40 +43,37 @@ function MidBanner({ image, alt, link, className = '' }: { image: string; alt: s
 export default function HomePage() {
   return (
     <div>
-      {/* Image Banners Carousel - Full Width */}
       <ImageBanners />
-
-      {/* Featured Categories with Images */}
       <FeaturedCategories />
-
-      {/* Mantas Section */}
       <MantasSection />
 
-      {/* Mid Banner - Selas */}
+      {/* Banner Selas + Produtos de Selas */}
       <MidBanner image={selasDesktop} alt="Selas e Acessórios" link="/categoria/selaria-selas-e-acessorios" />
+      <CategoryProductsSection
+        categorySlug="selaria-selas-e-acessorios"
+        title="Selas e Acessórios"
+        subtitle="As melhores selas para sua montaria"
+        buttonLabel="Ver Todas"
+        limit={8}
+      />
 
-      {/* Featured Products */}
       <FeaturedProducts />
-
-      {/* Promotions with Discounts */}
       <PromotionSection />
 
-      {/* Mid Banner - Jeans */}
+      {/* Banner Jeans + Produtos de Calças */}
       <MidBanner image={jeansDesktop} alt="Calças Jeans Country" link="/categoria/vestuario-calcas" />
+      <CategoryProductsSection
+        categorySlug="vestuario-calcas"
+        title="Calças Jeans"
+        subtitle="Estilo e conforto no dia a dia"
+        buttonLabel="Ver Todas"
+        limit={8}
+      />
 
-      {/* Premium Products */}
       <PremiumProducts />
-
-      {/* Latest Products (Camisas) */}
       <LatestProducts />
-
-      {/* Category Section */}
       <CategorySection />
-
-      {/* CTA Banner */}
       <CTABanner />
-
-      {/* All Products Section */}
       <AllProducts />
 
       {/* Stats Section */}
@@ -98,7 +93,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials */}
       <TestimonialsSection />
     </div>
   );

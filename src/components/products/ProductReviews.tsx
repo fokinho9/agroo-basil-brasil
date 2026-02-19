@@ -113,7 +113,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                 </div>
               </div>
               <span className="text-sm text-muted-foreground">
-                {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                {new Date(review.display_date || review.created_at).toLocaleDateString('pt-BR')}
               </span>
             </div>
             <p className="text-muted-foreground">{review.comment}</p>

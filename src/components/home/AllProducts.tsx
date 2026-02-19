@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowRight } from 'lucide-react';
 
 export function AllProducts() {
-  const { data: products, isLoading } = useDirectPurchaseProducts(20);
+  const { data: products, isLoading } = useDirectPurchaseProducts(30);
 
   if (isLoading) {
     return (

@@ -13,7 +13,7 @@ import { useProductReviews, generateFakeReviews } from '@/hooks/useReviews';
 import { ProductReviews } from '@/components/products/ProductReviews';
 import { RelatedProducts } from '@/components/products/RelatedProducts';
 import { FloatingBuyButton } from '@/components/products/FloatingBuyButton';
-import { ProductStoreSection } from '@/components/products/ProductStoreSection';
+
 import { ProductVariantSelector } from '@/components/products/ProductVariantSelector';
 import { ProductAddons, ProductAddon } from '@/components/products/ProductAddons';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
@@ -89,13 +89,13 @@ function ViewingNow() {
     }, 5000);
     return () => clearInterval(timer);
   }, []);
-  return <div className="flex items-center gap-2 text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 rounded-lg bg-primary">
-      <div className="flex -space-x-2">
+  return <div className="flex items-center gap-2 text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 rounded-lg bg-primary max-w-full">
+      <div className="flex -space-x-2 flex-shrink-0">
         <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center">
           <Users className="h-2.5 w-2.5 md:h-3 md:w-3 text-primary" />
         </div>
       </div>
-      <span className="text-secondary-foreground font-medium">
+      <span className="text-secondary-foreground font-medium truncate">
         {viewers} pessoas visualizando
       </span>
     </div>;
@@ -128,7 +128,7 @@ export default function ProductPage() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [addonValues, setAddonValues] = useState<Record<string, string>>({});
 
-  // Auto-generate reviews if none exist
+  // Auto-generate reviews if none exist (2-15 per product, some get none)
   useEffect(() => {
     async function generateReviewsIfNeeded() {
       if (!id || reviewsGenerated || !product) return;
@@ -136,12 +136,16 @@ export default function ProductPage() {
         data: existingReviews
       } = await supabase.from('reviews').select('id').eq('product_id', id).limit(1);
       if (!existingReviews || existingReviews.length === 0) {
-        const reviewCount = Math.floor(Math.random() * 29) + 2;
-        const fakeReviews = generateFakeReviews(id, reviewCount);
-        for (const review of fakeReviews) {
-          await supabase.from('reviews').insert(review);
+        // 30% chance of no reviews
+        const hasReviews = Math.random() > 0.3;
+        if (hasReviews) {
+          const reviewCount = Math.floor(Math.random() * 14) + 2; // 2-15
+          const fakeReviews = generateFakeReviews(id, reviewCount, product.name);
+          for (const review of fakeReviews) {
+            await supabase.from('reviews').insert(review);
+          }
+          refetchReviews();
         }
-        refetchReviews();
       }
       setReviewsGenerated(true);
     }
@@ -192,7 +196,7 @@ export default function ProductPage() {
   const prevImage = () => {
     setCurrentImageIndex(prev => (prev - 1 + images.length) % images.length);
   };
-  return <div className="container mx-auto px-4 py-6 md:py-8">
+  return <div className="container mx-auto px-4 py-6 md:py-8 overflow-hidden">
       <div className="grid md:grid-cols-2 gap-6 lg:gap-10">
         {/* Image Gallery */}
         <div className="space-y-3">
@@ -382,11 +386,11 @@ export default function ProductPage() {
       {/* Description Section */}
       {product.description && <>
           <Separator className="my-10" />
-          <div className="max-w-3xl">
+          <div className="max-w-3xl overflow-hidden">
             <h2 className="text-xl font-bold text-foreground mb-4">
               Descrição do Produto
             </h2>
-            <div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
+            <div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-line break-words overflow-wrap-anywhere">
               {formatDescription(product.description)}
             </div>
           </div>
@@ -405,8 +409,7 @@ export default function ProductPage() {
       <Separator className="my-10" />
       <RelatedProducts productId={id!} categoryId={product.category_id} />
 
-      {/* Store Section with Instagram */}
-      <ProductStoreSection />
+      {/* Store Section removed - it's in the Layout already */}
 
       {/* Floating Buy Button */}
       <FloatingBuyButton productName={product.name} price={product.price} isHighValue={isHighValue} onAddToCart={handleAddToCart} whatsappNumber={settings?.whatsapp?.number || '5511972238165'} />

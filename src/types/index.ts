@@ -98,6 +98,7 @@ export interface Review {
   reviewer_name: string;
   rating: number;
   comment: string;
+  display_date: string | null;
   created_at: string;
 }
 

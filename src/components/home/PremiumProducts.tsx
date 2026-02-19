@@ -26,7 +26,7 @@ export function usePremiumProducts(limit: number = 8) {
 }
 
 export function PremiumProducts() {
-  const { data: products, isLoading } = usePremiumProducts(8);
+  const { data: products, isLoading } = usePremiumProducts(12);
 
   if (isLoading) {
     return (

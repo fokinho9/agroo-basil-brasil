@@ -211,13 +211,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">
-              Início
-            </Link>
-            <Link to="/produtos" className="text-muted-foreground hover:text-primary transition-colors">
-              Produtos
-            </Link>
-            {parentCategories.slice(0, 5).map((category) => (
+            {parentCategories.slice(0, 6).map((category) => (
               <DesktopCategoryDropdown key={category.id} category={category} />
             ))}
           </nav>
@@ -341,20 +335,6 @@ export function Header() {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-border py-4 max-h-[70vh] overflow-y-auto">
             <nav className="flex flex-col gap-0.5">
-              <Link
-                to="/"
-                className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Início
-              </Link>
-              <Link
-                to="/produtos"
-                className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-muted rounded transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Produtos
-              </Link>
               {parentCategories.map((cat) => renderMobileCategory(cat))}
             </nav>
           </div>

@@ -1,5 +1,3 @@
-import { FeaturedProducts } from '@/components/home/FeaturedProducts';
-
 import { PromotionSection } from '@/components/home/PromotionSection';
 import { LatestProducts } from '@/components/home/LatestProducts';
 import { FeaturedCategories } from '@/components/home/FeaturedCategories';
@@ -7,13 +5,14 @@ import { CTABanner } from '@/components/home/CTABanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 import { ImageBanners } from '@/components/home/ImageBanners';
 
-import { PremiumProducts } from '@/components/home/PremiumProducts';
 import { MantasSection } from '@/components/home/MantasSection';
 import { CategoryProductsSection } from '@/components/home/CategoryProductsSection';
 import { Link } from 'react-router-dom';
 
 import selasDesktop from '@/assets/banners/selas-desktop.jpg';
 import jeansDesktop from '@/assets/banners/jeans-desktop.jpg';
+import ofertasDesktop from '@/assets/banners/ofertas-desktop.jpg';
+import chapeusDesktop from '@/assets/banners/chapeus-desktop.jpg';
 
 import { Leaf, Award, Package, Timer } from 'lucide-react';
 
@@ -47,6 +46,14 @@ export default function HomePage() {
       <FeaturedCategories />
       <MantasSection />
 
+      {/* Banner Ofertas + Promoções */}
+      <MidBanner image={ofertasDesktop} alt="Ofertas Imperdíveis" link="/produtos" />
+      <PromotionSection />
+
+      {/* Banner Chapéus + Produtos de Chapéus */}
+      <MidBanner image={chapeusDesktop} alt="Chapéus Country" link="/categoria/vestuario-chapeus" />
+      <LatestProducts />
+
       {/* Banner Selas + Produtos de Selas */}
       <MidBanner image={selasDesktop} alt="Selas e Acessórios" link="/categoria/selaria-selas-e-acessorios" />
       <CategoryProductsSection
@@ -56,9 +63,6 @@ export default function HomePage() {
         buttonLabel="Ver Todas"
         limit={8}
       />
-
-      <FeaturedProducts />
-      <PromotionSection />
 
       {/* Banner Jeans + Produtos de Calças */}
       <MidBanner image={jeansDesktop} alt="Calças Jeans Country" link="/categoria/vestuario-calcas" />
@@ -70,8 +74,6 @@ export default function HomePage() {
         limit={8}
       />
 
-      <PremiumProducts />
-      <LatestProducts />
       <CTABanner />
 
       {/* Stats Section */}

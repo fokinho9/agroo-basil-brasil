@@ -73,13 +73,6 @@ export default function HomePage() {
       <PremiumProducts />
       <LatestProducts />
       <CTABanner />
-      <CategoryProductsSection
-        categorySlug="vestuario-camisetas"
-        title="Camisas"
-        subtitle="As melhores camisas para o seu estilo"
-        buttonLabel="Ver Todas"
-        limit={8}
-      />
 
       {/* Stats Section */}
       <section className="py-12 md:py-16 bg-muted/50">

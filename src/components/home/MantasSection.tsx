@@ -16,16 +16,7 @@ function useMantasProducts(limit: number = 8) {
   return useQuery({
     queryKey: ['products', 'mantas', limit],
     queryFn: async () => {
-      // Get the parent category and all its subcategories
-      const { data: categories } = await supabase
-        .from('categories')
-        .select('id')
-        .or('slug.eq.mantas-e-protecao-para-cavalo,parent_id.eq.a0000001-0000-0000-0000-000000000002');
-
-      if (!categories || categories.length === 0) return [];
-
-      const categoryIds = categories.map(c => c.id);
-
+      // Get only the Mantas subcategory (not all subcategories like caneleiras, kits, etc.)
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -33,20 +24,20 @@ function useMantasProducts(limit: number = 8) {
           category:categories(*)
         `)
         .eq('active', true)
-        .in('category_id', categoryIds)
+        .eq('category_id', 'b0000002-0000-0000-0000-000000000003')
         .gt('price', 0)
         .order('created_at', { ascending: false })
         .limit(limit * 3);
 
       if (error) throw error;
       
-      // Sort to put "Air Pad Max" products first
+      // Sort to put "Ultimate Pad" products first
       const sorted = (data as Product[]).sort((a, b) => {
-        const aIsAirPadMax = a.name.toLowerCase().includes('air pad max');
-        const bIsAirPadMax = b.name.toLowerCase().includes('air pad max');
+        const aIsUltimate = a.name.toLowerCase().includes('ultimate pad');
+        const bIsUltimate = b.name.toLowerCase().includes('ultimate pad');
         
-        if (aIsAirPadMax && !bIsAirPadMax) return -1;
-        if (!aIsAirPadMax && bIsAirPadMax) return 1;
+        if (aIsUltimate && !bIsUltimate) return -1;
+        if (!aIsUltimate && bIsUltimate) return 1;
         return 0;
       });
       

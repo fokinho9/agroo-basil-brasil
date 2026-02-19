@@ -6,7 +6,7 @@ import { FeaturedCategories } from '@/components/home/FeaturedCategories';
 import { CTABanner } from '@/components/home/CTABanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 import { ImageBanners } from '@/components/home/ImageBanners';
-import { AllProducts } from '@/components/home/AllProducts';
+
 import { PremiumProducts } from '@/components/home/PremiumProducts';
 import { MantasSection } from '@/components/home/MantasSection';
 import { CategoryProductsSection } from '@/components/home/CategoryProductsSection';
@@ -73,7 +73,13 @@ export default function HomePage() {
       <PremiumProducts />
       <LatestProducts />
       <CTABanner />
-      <AllProducts />
+      <CategoryProductsSection
+        categorySlug="vestuario-camisetas"
+        title="Camisas"
+        subtitle="As melhores camisas para o seu estilo"
+        buttonLabel="Ver Todas"
+        limit={8}
+      />
 
       {/* Stats Section */}
       <section className="py-12 md:py-16 bg-muted/50">

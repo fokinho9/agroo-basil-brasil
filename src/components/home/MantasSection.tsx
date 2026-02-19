@@ -16,14 +16,15 @@ function useMantasProducts(limit: number = 8) {
   return useQuery({
     queryKey: ['products', 'mantas', limit],
     queryFn: async () => {
-      // First get the mantas category
-      const { data: category } = await supabase
+      // Get the parent category and all its subcategories
+      const { data: categories } = await supabase
         .from('categories')
         .select('id')
-        .eq('slug', 'mantas')
-        .single();
+        .or('slug.eq.mantas-e-protecao-para-cavalo,parent_id.eq.a0000001-0000-0000-0000-000000000002');
 
-      if (!category) return [];
+      if (!categories || categories.length === 0) return [];
+
+      const categoryIds = categories.map(c => c.id);
 
       const { data, error } = await supabase
         .from('products')
@@ -32,10 +33,10 @@ function useMantasProducts(limit: number = 8) {
           category:categories(*)
         `)
         .eq('active', true)
-        .eq('category_id', category.id)
+        .in('category_id', categoryIds)
         .gt('price', 0)
-        .lte('price', 500)
-        .limit(limit * 2);
+        .order('created_at', { ascending: false })
+        .limit(limit * 3);
 
       if (error) throw error;
       

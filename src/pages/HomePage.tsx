@@ -1,5 +1,5 @@
 import { FeaturedProducts } from '@/components/home/FeaturedProducts';
-import { CategorySection } from '@/components/home/CategorySection';
+
 import { PromotionSection } from '@/components/home/PromotionSection';
 import { LatestProducts } from '@/components/home/LatestProducts';
 import { FeaturedCategories } from '@/components/home/FeaturedCategories';
@@ -72,7 +72,6 @@ export default function HomePage() {
 
       <PremiumProducts />
       <LatestProducts />
-      <CategorySection />
       <CTABanner />
       <AllProducts />
 

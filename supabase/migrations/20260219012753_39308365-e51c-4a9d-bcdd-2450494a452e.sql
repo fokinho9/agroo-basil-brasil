@@ -1,0 +1,2 @@
+INSERT INTO products (name, description, price, original_price, image_url, category_id, stock, active, featured) VALUES
+('Chapéu de Palha Natural Stetson 37984', 'Chapéu de Palha Natural Stetson 37984, qualidade premium da marca Stetson. Palha natural com acabamento refinado, ideal para rodeios e eventos country. Disponível na Agro Brasil.', 824.58, NULL, 'https://cdn.iset.io/assets/66687/produtos/21650/25a936d66f7ace2cc31dcdad4204909667e803c78d595.png', '6c6c18c3-07ae-42f1-a196-c0e81f1f237b', 10, true, true)

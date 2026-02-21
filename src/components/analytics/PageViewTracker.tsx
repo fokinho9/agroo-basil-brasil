@@ -83,21 +83,34 @@ export function PageViewTracker() {
     const utmSource = params.get('utm_source');
     const utmMedium = params.get('utm_medium');
     const utmCampaign = params.get('utm_campaign');
+    const utmContent = params.get('utm_content');
+    const utmTerm = params.get('utm_term');
+    const gclid = params.get('gclid');
+    const fbclid = params.get('fbclid');
     const referrer = document.referrer;
 
-    const sourceLabel = detectSource(referrer, utmSource);
+    // Auto-detect source from gclid/fbclid
+    let detectedSource = utmSource;
+    if (!detectedSource && gclid) detectedSource = 'google';
+    if (!detectedSource && fbclid) detectedSource = 'facebook';
+
+    const sourceLabel = detectSource(referrer, detectedSource);
 
     supabase.from('page_views').insert({
       session_id: getSessionId(),
       path,
       referrer: referrer || null,
-      utm_source: utmSource || null,
-      utm_medium: utmMedium || null,
+      utm_source: utmSource || (gclid ? 'google_ads' : null) || (fbclid ? 'meta_ads' : null),
+      utm_medium: utmMedium || (gclid ? 'cpc' : null) || (fbclid ? 'paid_social' : null),
       utm_campaign: utmCampaign || null,
+      utm_content: utmContent || null,
+      utm_term: utmTerm || null,
+      gclid: gclid || null,
+      fbclid: fbclid || null,
       source_label: sourceLabel,
       device_type: getDeviceType(),
       browser: getBrowser(),
-    }).then(({ error }) => {
+    } as any).then(({ error }) => {
       if (error) console.error('Page view tracking error:', error.message);
     });
   }, [location.pathname, location.search]);

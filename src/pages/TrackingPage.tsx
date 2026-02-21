@@ -9,28 +9,32 @@ import { formatCurrency } from '@/lib/utils';
 interface OrderData {
   id: string;
   customer_name: string;
+  customer_city: string | null;
   tracking_code: string | null;
   status: string;
   total: number;
   created_at: string;
 }
 
-const trackingSteps = [
-  { day: 0, title: 'Pedido Confirmado', description: 'Seu pedido foi recebido e confirmado.', icon: CheckCircle2 },
-  { day: 1, title: 'Pagamento Aprovado', description: 'Pagamento processado com sucesso.', icon: CheckCircle2 },
-  { day: 2, title: 'Preparando Pedido', description: 'Seu pedido está sendo separado no estoque.', icon: Box },
-  { day: 3, title: 'Embalagem Concluída', description: 'Produtos embalados e prontos para envio.', icon: Package },
-  { day: 4, title: 'Coletado pela Transportadora', description: 'O pacote foi coletado e está a caminho.', icon: Truck },
-  { day: 5, title: 'Em Trânsito - Centro de Distribuição', description: 'Pacote chegou ao centro de distribuição regional.', icon: MapPin },
-  { day: 6, title: 'Em Trânsito', description: 'Pacote em deslocamento para o destino.', icon: Truck },
-  { day: 7, title: 'Chegou ao Estado de Destino', description: 'Pacote chegou ao estado de entrega.', icon: MapPin },
-  { day: 8, title: 'Em Trânsito Local', description: 'Pacote em transporte dentro do estado.', icon: Truck },
-  { day: 9, title: 'Centro de Distribuição Local', description: 'Pacote no centro de distribuição da sua cidade.', icon: MapPin },
-  { day: 10, title: 'Saiu para Entrega', description: 'Pacote saiu para entrega ao destinatário.', icon: Truck },
-  { day: 11, title: 'Tentativa de Entrega', description: 'Tentativa de entrega realizada. Nova tentativa será feita.', icon: Clock },
-  { day: 12, title: 'Em Rota de Entrega', description: 'Pacote em nova rota de entrega.', icon: Truck },
-  { day: 13, title: 'Entregue ao Destinatário', description: 'Pacote entregue com sucesso!', icon: CheckCircle2 },
-];
+const getTrackingSteps = (city: string | null) => {
+  const customerCity = city || 'sua cidade';
+  return [
+    { day: 0, title: 'Pedido Confirmado', description: 'Seu pedido foi recebido e confirmado.', icon: CheckCircle2 },
+    { day: 1, title: 'Pagamento Aprovado', description: 'Pagamento processado com sucesso.', icon: CheckCircle2 },
+    { day: 2, title: 'Preparando Pedido', description: 'Seu pedido está sendo separado no estoque em São Paulo - SP.', icon: Box },
+    { day: 3, title: 'Embalagem Concluída', description: 'Produtos embalados e prontos para envio. Centro de Distribuição São Paulo - SP.', icon: Package },
+    { day: 4, title: 'Coletado pela Transportadora', description: 'O pacote foi coletado em São Paulo - SP e está a caminho.', icon: Truck },
+    { day: 5, title: 'Em Trânsito', description: 'Pacote saiu do centro de distribuição de São Paulo - SP.', icon: Truck },
+    { day: 6, title: 'Em Trânsito - Rodovia', description: 'Pacote em deslocamento para o estado de destino.', icon: MapPin },
+    { day: 7, title: 'Chegou ao Estado de Destino', description: `Pacote chegou ao centro de distribuição próximo a ${customerCity}.`, icon: MapPin },
+    { day: 8, title: 'Em Rota de Entrega', description: `Pacote saiu para entrega em ${customerCity}.`, icon: Truck },
+    { day: 9, title: '1ª Tentativa de Entrega', description: `Tentativa de entrega em ${customerCity} não foi bem-sucedida. Destinatário ausente.`, icon: Clock },
+    { day: 10, title: 'Em Rota de Entrega', description: `Nova tentativa de entrega programada para ${customerCity}.`, icon: Truck },
+    { day: 11, title: '2ª Tentativa de Entrega', description: `Segunda tentativa de entrega em ${customerCity} não foi bem-sucedida. Endereço com dificuldade de acesso.`, icon: Clock },
+    { day: 12, title: '3ª Tentativa de Entrega', description: `Terceira tentativa de entrega em ${customerCity}. Aguardando contato com destinatário.`, icon: Clock },
+    { day: 13, title: 'Entregue ao Destinatário', description: `Pacote entregue com sucesso em ${customerCity}!`, icon: CheckCircle2 },
+  ];
+};
 
 export default function TrackingPage() {
   const [searchCode, setSearchCode] = useState('');
@@ -50,7 +54,7 @@ export default function TrackingPage() {
       
       const { data, error: fetchError } = await supabase
         .from('orders')
-        .select('id, customer_name, tracking_code, status, total, created_at')
+        .select('id, customer_name, customer_city, tracking_code, status, total, created_at')
         .or(`tracking_code.eq.${cleanCode},id.ilike.${cleanCode.toLowerCase()}%`)
         .limit(1)
         .single();
@@ -68,15 +72,16 @@ export default function TrackingPage() {
     }
   };
 
-  const getVisibleSteps = (createdAt: string) => {
+  const getVisibleSteps = (createdAt: string, city: string | null) => {
     const orderDate = new Date(createdAt);
     const now = new Date();
     const daysPassed = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    return trackingSteps.filter(step => step.day <= daysPassed);
+    const steps = getTrackingSteps(city);
+    return steps.filter(step => step.day <= daysPassed);
   };
 
-  const visibleSteps = order ? getVisibleSteps(order.created_at) : [];
+  const trackingSteps = order ? getTrackingSteps(order.customer_city) : [];
+  const visibleSteps = order ? getVisibleSteps(order.created_at, order.customer_city) : [];
   const isDelivered = visibleSteps.length === trackingSteps.length;
 
   return (

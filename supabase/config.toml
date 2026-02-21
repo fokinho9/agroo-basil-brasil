@@ -3,5 +3,8 @@ project_id = "zugcumtokvyszishwcwh"
 [functions.import-from-site]
 verify_jwt = false
 
+[functions.import-shopify-collection]
+verify_jwt = false
+
 [functions.manage-users]
 verify_jwt = false

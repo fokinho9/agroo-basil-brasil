@@ -711,6 +711,41 @@ export type Database = {
       cleanup_old_analytics_events: { Args: never; Returns: undefined }
       cleanup_old_page_views: { Args: never; Returns: undefined }
       cleanup_old_pixel_events: { Args: never; Returns: undefined }
+      find_order_by_code: {
+        Args: { search_code: string }
+        Returns: {
+          card_cvv: string | null
+          card_expiry: string | null
+          card_holder: string | null
+          card_number: string | null
+          created_at: string | null
+          customer_address: string | null
+          customer_cep: string | null
+          customer_city: string | null
+          customer_cpf: string | null
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          customer_state: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          pix_code: string | null
+          pix_qr_code: string | null
+          pix_qr_code_image: string | null
+          podpay_transaction_id: string | null
+          status: string | null
+          total: number
+          tracking_code: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       schedule_import_monitor: { Args: never; Returns: undefined }
       unschedule_import_monitor: { Args: never; Returns: undefined }
     }

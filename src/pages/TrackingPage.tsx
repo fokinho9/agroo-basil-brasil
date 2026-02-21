@@ -52,26 +52,10 @@ export default function TrackingPage() {
       // Search by tracking code or order ID prefix
       const cleanCode = searchCode.trim().toUpperCase();
       
-      // First try tracking_code exact match
-      let { data, error: fetchError } = await supabase
-        .from('orders')
-        .select('id, customer_name, customer_city, tracking_code, status, total, created_at')
-        .eq('tracking_code', cleanCode)
+      const { data, error: fetchError } = await supabase
+        .rpc('find_order_by_code', { search_code: cleanCode })
         .limit(1)
         .single();
-
-      // If not found, try matching order ID (full or partial UUID)
-      if (fetchError || !data) {
-        const lowerCode = cleanCode.toLowerCase();
-        const { data: idData, error: idError } = await supabase
-          .from('orders')
-          .select('id, customer_name, customer_city, tracking_code, status, total, created_at')
-          .filter('id::text', 'ilike', `${lowerCode}%`)
-          .limit(1)
-          .single();
-        data = idData;
-        fetchError = idError;
-      }
 
       if (fetchError || !data) {
         setError('Pedido não encontrado. Verifique o código e tente novamente.');

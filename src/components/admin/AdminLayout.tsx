@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   BarChart3,
   Users,
+  MousePointerClick,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ const menuItems = [
   { icon: Image, label: 'Banners', path: '/fokinho/banners' },
   { icon: FileUp, label: 'Importar', path: '/fokinho/importar' },
   { icon: Users, label: 'Usuários', path: '/fokinho/usuarios' },
+  { icon: MousePointerClick, label: 'Comportamento', path: '/fokinho/comportamento' },
   { icon: Settings, label: 'Configurações', path: '/fokinho/configuracoes' },
 ];
 

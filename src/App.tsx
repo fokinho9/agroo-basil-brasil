@@ -18,6 +18,7 @@ import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import ReturnsPage from "@/pages/ReturnsPage";
 import FAQPage from "@/pages/FAQPage";
+import TrackingPage from "@/pages/TrackingPage";
 import NotFound from "@/pages/NotFound";
 
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
@@ -31,7 +32,7 @@ import AdminImportPage from "@/pages/admin/AdminImportPage";
 import AdminAbandonedCartsPage from "@/pages/admin/AdminAbandonedCartsPage";
 import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
-
+import AdminHotjarPage from "@/pages/admin/AdminHotjarPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/privacidade" element={<Layout><PrivacyPage /></Layout>} />
               <Route path="/trocas" element={<Layout><ReturnsPage /></Layout>} />
               <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
+              <Route path="/rastreio" element={<Layout><TrackingPage /></Layout>} />
               
               {/* Admin routes - hidden from public */}
               <Route path="/fokinho" element={<AdminLoginPage />} />
@@ -69,6 +71,7 @@ const App = () => (
               <Route path="/fokinho/analytics" element={<AdminAnalyticsPage />} />
               <Route path="/fokinho/importar" element={<AdminImportPage />} />
               <Route path="/fokinho/usuarios" element={<AdminUsersPage />} />
+              <Route path="/fokinho/comportamento" element={<AdminHotjarPage />} />
               
               
               {/* Keep old admin routes redirecting */}

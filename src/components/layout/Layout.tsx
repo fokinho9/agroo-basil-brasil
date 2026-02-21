@@ -7,6 +7,10 @@ import { MiniFloatingCart } from '@/components/cart/MiniFloatingCart';
 import { CartNotification } from '@/components/cart/CartNotification';
 import { WhatsAppButton } from '@/components/common/WhatsAppButton';
 import { StoreInfo } from '@/components/common/StoreInfo';
+import { ClickTracker } from '@/components/analytics/ClickTracker';
+import { ScrollTracker } from '@/components/analytics/ScrollTracker';
+import { FeedbackWidget } from '@/components/analytics/FeedbackWidget';
+import { PollWidget } from '@/components/analytics/PollWidget';
 import { useCart } from '@/contexts/CartContext';
 
 interface LayoutProps {
@@ -42,6 +46,12 @@ export function Layout({ children }: LayoutProps) {
       <FloatingCart />
       
       <WhatsAppButton />
+      
+      {/* Analytics trackers */}
+      <ClickTracker />
+      <ScrollTracker />
+      {!isCheckout && <FeedbackWidget />}
+      {!isCheckout && <PollWidget />}
     </div>
   );
 }

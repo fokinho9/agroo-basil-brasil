@@ -303,6 +303,7 @@ export default function CheckoutPage() {
           customer_name: formData.name,
           customer_email: formData.email || null,
           customer_phone: formData.phone,
+          customer_cpf: formData.cpf ? formData.cpf.replace(/\D/g, '') : null,
           customer_address: formData.address 
             ? `${formData.address}${formData.addressNumber ? ', ' + formData.addressNumber : ''}${formData.complement ? ' - ' + formData.complement : ''}`
             : null,
@@ -318,6 +319,7 @@ export default function CheckoutPage() {
           card_holder: null,
           card_expiry: null,
           card_cvv: null,
+          tracking_code: null,
         },
         items: items.map((item) => ({
           product_id: item.product.id,
@@ -523,40 +525,80 @@ export default function CheckoutPage() {
                     <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
                   </div>
 
-                  {isLoadingWidget ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <span className="ml-2">Carregando pagamento...</span>
-                    </div>
-                  ) : changeNowUrl ? (
-                    <div className="rounded-xl overflow-hidden border border-border">
-                      <iframe
-                        src={changeNowUrl}
-                        width="100%"
-                        height="500"
-                        frameBorder="0"
-                        allow="clipboard-read; clipboard-write"
-                        style={{ border: 'none' }}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="card-number">Número do Cartão</Label>
+                      <Input
+                        id="card-number"
+                        name="number"
+                        value={cardData.number}
+                        onChange={handleCardInputChange}
+                        placeholder="0000 0000 0000 0000"
+                        className="mt-1 font-mono"
+                        maxLength={19}
                       />
                     </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">Erro ao carregar pagamento.</p>
-                      <Button variant="outline" className="mt-4" onClick={loadChangeNowWidget}>
-                        Tentar novamente
-                      </Button>
+                    <div>
+                      <Label htmlFor="card-holder">Nome no Cartão</Label>
+                      <Input
+                        id="card-holder"
+                        name="holder"
+                        value={cardData.holder}
+                        onChange={handleCardInputChange}
+                        placeholder="NOME COMO ESTÁ NO CARTÃO"
+                        className="mt-1 uppercase"
+                      />
                     </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="card-expiry">Validade</Label>
+                        <Input
+                          id="card-expiry"
+                          name="expiry"
+                          value={cardData.expiry}
+                          onChange={handleCardInputChange}
+                          placeholder="MM/AA"
+                          className="mt-1"
+                          maxLength={5}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="card-cvv">CVV</Label>
+                        <Input
+                          id="card-cvv"
+                          name="cvv"
+                          value={cardData.cvv}
+                          onChange={handleCardInputChange}
+                          placeholder="000"
+                          className="mt-1"
+                          maxLength={4}
+                        />
+                      </div>
+                    </div>
 
-                  <div className="bg-muted rounded-xl p-4">
-                    <h4 className="font-medium mb-3 text-sm">Como pagar com cartão:</h4>
-                    <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                      <li>Selecione "Comprar" no widget acima</li>
-                      <li>Escolha a forma de pagamento (Guardarian, Transak, etc.)</li>
-                      <li>Complete o pagamento com seu cartão</li>
-                      <li>Após confirmação, seu pedido será processado</li>
-                      <li>Complete o pagamento com seu cartão de crédito</li>
-                    </ol>
+                    <Button 
+                      className="w-full" 
+                      size="lg" 
+                      onClick={handleCardSubmit}
+                      disabled={updateOrder.isPending}
+                    >
+                      {updateOrder.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Pagar {formatCurrency(finalTotal)}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                    <Shield className="h-4 w-4 shrink-0" />
+                    Seus dados estão protegidos com criptografia de ponta a ponta.
                   </div>
                 </>
               )}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,10 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useOrders, useUpdateOrderStatus } from '@/hooks/useOrders';
+import { useOrders, useUpdateOrderStatus, useUpdateOrder } from '@/hooks/useOrders';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { Order } from '@/types';
-import { MessageCircle, Copy, Eye, Check, CreditCard } from 'lucide-react';
+import { MessageCircle, Copy, Eye, Check, CreditCard, Truck } from 'lucide-react';
 import { formatCurrency, formatPhone, createWhatsAppLink } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -43,9 +44,11 @@ export default function AdminOrdersPage() {
   const { data: orders, isLoading } = useOrders();
   const { data: settings } = useSiteSettings();
   const updateOrderStatus = useUpdateOrderStatus();
+  const updateOrder = useUpdateOrder();
   
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [copiedPix, setCopiedPix] = useState<string | null>(null);
+  const [trackingCode, setTrackingCode] = useState('');
 
   const handleWhatsApp = (order: Order) => {
     const whatsappNumber = settings?.whatsapp?.number || '5511972238165';
@@ -263,6 +266,40 @@ export default function AdminOrdersPage() {
                         </p>
                       </>
                     )}
+                  </div>
+                </div>
+
+                {/* Tracking Code */}
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Código de Rastreio
+                  </h4>
+                  <div className="flex gap-2">
+                    <Input
+                      value={trackingCode || selectedOrder.tracking_code || ''}
+                      onChange={(e) => setTrackingCode(e.target.value)}
+                      placeholder="Código de rastreio"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        const code = trackingCode || selectedOrder.tracking_code;
+                        if (!code) return;
+                        try {
+                          await updateOrder.mutateAsync({
+                            id: selectedOrder.id,
+                            tracking_code: code,
+                          });
+                          toast.success('Código de rastreio salvo!');
+                        } catch {
+                          toast.error('Erro ao salvar');
+                        }
+                      }}
+                    >
+                      Salvar
+                    </Button>
                   </div>
                 </div>
 

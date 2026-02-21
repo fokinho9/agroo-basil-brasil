@@ -136,6 +136,72 @@ export type Database = {
           },
         ]
       }
+      click_events: {
+        Row: {
+          created_at: string
+          element_tag: string | null
+          element_text: string | null
+          id: string
+          path: string
+          session_id: string
+          viewport_height: number
+          viewport_width: number
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          element_tag?: string | null
+          element_text?: string | null
+          id?: string
+          path: string
+          session_id: string
+          viewport_height: number
+          viewport_width: number
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          element_tag?: string | null
+          element_text?: string | null
+          id?: string
+          path?: string
+          session_id?: string
+          viewport_height?: number
+          viewport_width?: number
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
+      feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          path: string
+          rating: number
+          session_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          path: string
+          rating: number
+          session_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          path?: string
+          rating?: number
+          session_id?: string
+        }
+        Relationships: []
+      }
       import_jobs: {
         Row: {
           completed_at: string | null
@@ -364,6 +430,65 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_responses: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          poll_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          poll_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          poll_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_responses_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          options: Json
+          question: string
+          show_on_pages: string[] | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          options?: Json
+          question: string
+          show_on_pages?: string[] | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          options?: Json
+          question?: string
+          show_on_pages?: string[] | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean | null
@@ -476,6 +601,30 @@ export type Database = {
           },
         ]
       }
+      scroll_events: {
+        Row: {
+          created_at: string
+          id: string
+          max_depth: number
+          path: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_depth: number
+          path: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_depth?: number
+          path?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           created_at: string | null
@@ -505,6 +654,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_analytics_events: { Args: never; Returns: undefined }
       cleanup_old_page_views: { Args: never; Returns: undefined }
       schedule_import_monitor: { Args: never; Returns: undefined }
       unschedule_import_monitor: { Args: never; Returns: undefined }

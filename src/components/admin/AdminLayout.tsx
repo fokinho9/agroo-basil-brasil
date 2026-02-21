@@ -16,6 +16,7 @@ import {
   BarChart3,
   Users,
   MousePointerClick,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,6 +37,7 @@ const menuItems = [
   { icon: FileUp, label: 'Importar', path: '/fokinho/importar' },
   { icon: Users, label: 'Usuários', path: '/fokinho/usuarios' },
   { icon: MousePointerClick, label: 'Comportamento', path: '/fokinho/comportamento' },
+  { icon: Zap, label: 'Pixels & UTM', path: '/fokinho/pixels' },
   { icon: Settings, label: 'Configurações', path: '/fokinho/configuracoes' },
 ];
 

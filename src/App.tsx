@@ -7,6 +7,7 @@ import { FloatingButtonProvider } from "@/contexts/FloatingButtonContext";
 import { Layout } from "@/components/layout/Layout";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { PixelInjector } from "@/components/analytics/PixelInjector";
 
 import HomePage from "@/pages/HomePage";
 import ProductsPage from "@/pages/ProductsPage";
@@ -33,6 +34,7 @@ import AdminAbandonedCartsPage from "@/pages/admin/AdminAbandonedCartsPage";
 import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminHotjarPage from "@/pages/admin/AdminHotjarPage";
+import AdminPixelsPage from "@/pages/admin/AdminPixelsPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -44,6 +46,7 @@ const App = () => (
           <BrowserRouter>
             <ScrollToTop />
             <PageViewTracker />
+            <PixelInjector />
             <Routes>
               <Route path="/" element={<Layout><HomePage /></Layout>} />
               <Route path="/produtos" element={<Layout><ProductsPage /></Layout>} />
@@ -72,6 +75,7 @@ const App = () => (
               <Route path="/fokinho/importar" element={<AdminImportPage />} />
               <Route path="/fokinho/usuarios" element={<AdminUsersPage />} />
               <Route path="/fokinho/comportamento" element={<AdminHotjarPage />} />
+              <Route path="/fokinho/pixels" element={<AdminPixelsPage />} />
               
               
               {/* Keep old admin routes redirecting */}

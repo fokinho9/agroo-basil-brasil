@@ -430,6 +430,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pixel_events: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          event_data: Json | null
+          event_name: string
+          id: string
+          path: string
+          pixel_platform: string
+          session_id: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          event_data?: Json | null
+          event_name: string
+          id?: string
+          path: string
+          pixel_platform: string
+          session_id: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          event_data?: Json | null
+          event_name?: string
+          id?: string
+          path?: string
+          pixel_platform?: string
+          session_id?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
       poll_responses: {
         Row: {
           created_at: string
@@ -656,6 +698,7 @@ export type Database = {
     Functions: {
       cleanup_old_analytics_events: { Args: never; Returns: undefined }
       cleanup_old_page_views: { Args: never; Returns: undefined }
+      cleanup_old_pixel_events: { Args: never; Returns: undefined }
       schedule_import_monitor: { Args: never; Returns: undefined }
       unschedule_import_monitor: { Args: never; Returns: undefined }
     }

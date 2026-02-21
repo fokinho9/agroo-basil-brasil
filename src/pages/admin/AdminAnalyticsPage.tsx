@@ -9,7 +9,7 @@ import {
   Users, Eye, Monitor, Smartphone, Tablet, Globe,
   TrendingUp, TrendingDown, Clock, Activity, BarChart3,
   ArrowUpRight, ArrowDownRight, CalendarDays, MousePointerClick,
-  FileText, Layers,
+  FileText, Layers, Download, Link2,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -245,6 +245,41 @@ export default function AdminAnalyticsPage() {
       .slice(0, 10);
   }, [currentViews]);
 
+  // Detailed UTM breakdown (source, medium, campaign)
+  const utmDetailData = useMemo(() => {
+    const map: Record<string, { source: string; medium: string; campaign: string; views: number; sessions: Set<string> }> = {};
+    for (const v of currentViews) {
+      if (!v.utm_source && !v.utm_medium && !v.utm_campaign) continue;
+      const key = `${v.utm_source || '-'}|${v.utm_medium || '-'}|${v.utm_campaign || '-'}`;
+      if (!map[key]) map[key] = { source: v.utm_source || '-', medium: v.utm_medium || '-', campaign: v.utm_campaign || '-', views: 0, sessions: new Set() };
+      map[key].views++;
+      map[key].sessions.add(v.session_id);
+    }
+    return Object.values(map)
+      .map(d => ({ ...d, sessionsCount: d.sessions.size }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 20);
+  }, [currentViews]);
+
+  // Export analytics CSV
+  const handleExportCSV = () => {
+    if (currentViews.length === 0) return;
+    const headers = ['Data', 'Session ID', 'Página', 'Referrer', 'UTM Source', 'UTM Medium', 'UTM Campaign', 'Fonte', 'Dispositivo', 'Navegador'];
+    const rows = currentViews.map(v => [
+      format(new Date(v.created_at), 'dd/MM/yyyy HH:mm:ss'),
+      v.session_id, v.path, v.referrer || '', v.utm_source || '', v.utm_medium || '',
+      v.utm_campaign || '', v.source_label, v.device_type, v.browser || '',
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-${preset}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // New vs Returning (simple heuristic: first page view time in range)
   const newVsReturning = useMemo(() => {
     // This is a simplified version - checks if session's first view was recent
@@ -312,6 +347,9 @@ export default function AdminAnalyticsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1" disabled={currentViews.length === 0}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
             <Tabs value={preset} onValueChange={(v) => setPreset(v as RangePreset)}>
               <TabsList>
@@ -606,6 +644,46 @@ export default function AdminAnalyticsPage() {
                         <td className="py-2 text-right tabular-nums">{sessions}</td>
                         <td className="py-2 text-right tabular-nums">{views}</td>
                         <td className="py-2 text-right tabular-nums">{sessions > 0 ? (views / sessions).toFixed(1) : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Detailed UTM Breakdown */}
+        {utmDetailData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Link2 className="h-5 w-5" />
+                Detalhamento UTM Completo
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 font-medium text-muted-foreground">Source</th>
+                      <th className="text-left py-2 font-medium text-muted-foreground">Medium</th>
+                      <th className="text-left py-2 font-medium text-muted-foreground">Campaign</th>
+                      <th className="text-right py-2 font-medium text-muted-foreground">Sessões</th>
+                      <th className="text-right py-2 font-medium text-muted-foreground">Views</th>
+                      <th className="text-right py-2 font-medium text-muted-foreground">Pág/Sessão</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {utmDetailData.map((d, i) => (
+                      <tr key={i} className="border-b border-border/50 last:border-0">
+                        <td className="py-2 font-medium">{d.source}</td>
+                        <td className="py-2 text-muted-foreground">{d.medium}</td>
+                        <td className="py-2 text-muted-foreground truncate max-w-[200px]">{d.campaign}</td>
+                        <td className="py-2 text-right tabular-nums">{d.sessionsCount}</td>
+                        <td className="py-2 text-right tabular-nums">{d.views}</td>
+                        <td className="py-2 text-right tabular-nums">{d.sessionsCount > 0 ? (d.views / d.sessionsCount).toFixed(1) : '-'}</td>
                       </tr>
                     ))}
                   </tbody>

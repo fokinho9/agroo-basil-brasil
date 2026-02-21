@@ -18,6 +18,7 @@ import {
   MousePointerClick,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 interface AdminLayoutProps {
@@ -97,7 +98,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border z-40 transition-transform lg:translate-x-0',
+          'fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border z-40 transition-transform lg:translate-x-0 flex flex-col',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -111,27 +112,29 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </div>
 
-        <nav className="p-4 space-y-1 mt-16 lg:mt-0">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <ScrollArea className="flex-1 mt-16 lg:mt-0">
+          <nav className="p-4 space-y-1">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                    isActive
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </ScrollArea>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
           <Link

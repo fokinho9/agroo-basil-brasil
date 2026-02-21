@@ -1,4 +1,4 @@
-import { useMemo, useState, lazy, Suspense } from 'react';
+import { useMemo, useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
 import { format, subDays, startOfDay, endOfDay, differenceInDays, eachDayOfInterval, eachHourOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const AnalyticsGlobe = lazy(() => import('@/components/analytics/AnalyticsGlobe').then(m => ({ default: m.AnalyticsGlobe })));
+import { AnalyticsGlobe } from '@/components/analytics/AnalyticsGlobe';
 
 const SOURCE_COLORS: Record<string, string> = {
   'Direto': '#6366f1', 'Google': '#ef4444', 'Instagram': '#ec4899',
@@ -473,9 +473,7 @@ export default function AdminAnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
-              <AnalyticsGlobe countryData={countryData} />
-            </Suspense>
+            <AnalyticsGlobe countryData={countryData} />
             {countryData.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {countryData.slice(0, 8).map(({ country, count }) => (

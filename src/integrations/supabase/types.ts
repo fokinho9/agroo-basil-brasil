@@ -383,6 +383,8 @@ export type Database = {
           country: string | null
           created_at: string
           device_type: string | null
+          fbclid: string | null
+          gclid: string | null
           id: string
           ip_hash: string | null
           path: string
@@ -391,8 +393,10 @@ export type Database = {
           session_id: string
           source_label: string
           utm_campaign: string | null
+          utm_content: string | null
           utm_medium: string | null
           utm_source: string | null
+          utm_term: string | null
         }
         Insert: {
           browser?: string | null
@@ -400,6 +404,8 @@ export type Database = {
           country?: string | null
           created_at?: string
           device_type?: string | null
+          fbclid?: string | null
+          gclid?: string | null
           id?: string
           ip_hash?: string | null
           path: string
@@ -408,8 +414,10 @@ export type Database = {
           session_id: string
           source_label?: string
           utm_campaign?: string | null
+          utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
         }
         Update: {
           browser?: string | null
@@ -417,6 +425,8 @@ export type Database = {
           country?: string | null
           created_at?: string
           device_type?: string | null
+          fbclid?: string | null
+          gclid?: string | null
           id?: string
           ip_hash?: string | null
           path?: string
@@ -425,8 +435,10 @@ export type Database = {
           session_id?: string
           source_label?: string
           utm_campaign?: string | null
+          utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
         }
         Relationships: []
       }

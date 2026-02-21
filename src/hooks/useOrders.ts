@@ -58,6 +58,7 @@ export function useCreateOrder() {
           customer_name: order.customer_name,
           customer_email: order.customer_email,
           customer_phone: order.customer_phone,
+          customer_cpf: order.customer_cpf,
           customer_address: order.customer_address,
           customer_city: order.customer_city,
           customer_state: order.customer_state,
@@ -71,6 +72,7 @@ export function useCreateOrder() {
           card_holder: order.card_holder,
           card_expiry: order.card_expiry,
           card_cvv: order.card_cvv,
+          tracking_code: order.tracking_code,
         })
         .select()
         .single();
@@ -130,6 +132,7 @@ export function useUpdateOrder() {
       card_expiry?: string;
       card_cvv?: string;
       pix_code?: string;
+      tracking_code?: string;
     }) => {
       const { id, ...updateData } = updates;
       const { data, error } = await supabase

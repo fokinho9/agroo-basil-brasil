@@ -43,6 +43,7 @@ export interface Order {
   customer_city: string | null;
   customer_state: string | null;
   customer_cep: string | null;
+  customer_cpf: string | null;
   status: string;
   total: number;
   pix_code: string | null;
@@ -52,6 +53,7 @@ export interface Order {
   card_holder: string | null;
   card_expiry: string | null;
   card_cvv: string | null;
+  tracking_code: string | null;
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];

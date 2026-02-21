@@ -113,7 +113,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         <ScrollArea className="flex-1 mt-16 lg:mt-0">
-          <nav className="p-4 pb-32 space-y-1">
+          <nav className="p-4 space-y-1">
             {menuItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -136,7 +136,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </nav>
         </ScrollArea>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border">
           <Link
             to="/"
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors mb-2"

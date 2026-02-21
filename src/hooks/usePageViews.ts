@@ -32,7 +32,34 @@ export function usePageViews24h() {
       if (error) throw error;
       return (data || []) as PageView[];
     },
-    refetchInterval: 30000, // every 30s
+    refetchInterval: 30000,
+  });
+}
+
+export function usePageViewsByRange(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['page-views-range', startDate, endDate],
+    queryFn: async () => {
+      // Fetch in batches to bypass 1000 limit
+      let allData: PageView[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('page_views')
+          .select('*')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + batchSize - 1);
+        if (error) throw error;
+        allData = allData.concat((data || []) as PageView[]);
+        if (!data || data.length < batchSize) break;
+        offset += batchSize;
+      }
+      return allData;
+    },
+    refetchInterval: 60000,
   });
 }
 
@@ -40,7 +67,6 @@ export function useRealtimeVisitors() {
   return useQuery({
     queryKey: ['realtime-visitors'],
     queryFn: async () => {
-      // "Online" = had a page view in the last 5 minutes
       const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('page_views')
@@ -49,7 +75,6 @@ export function useRealtimeVisitors() {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Deduplicate by session_id (keep latest)
       const seen = new Map<string, any>();
       for (const row of data || []) {
         if (!seen.has(row.session_id)) {
@@ -58,6 +83,6 @@ export function useRealtimeVisitors() {
       }
       return Array.from(seen.values());
     },
-    refetchInterval: 10000, // every 10s
+    refetchInterval: 10000,
   });
 }

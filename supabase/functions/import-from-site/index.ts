@@ -359,7 +359,7 @@ async function findOrCreateCategory(
     if (cache.has(key)) { parentId = cache.get(key)!; lastId = parentId; continue; }
 
     const { data } = await supabase.from('categories').select('id').ilike('name', trimmed).limit(1);
-    if (data?.length) { parentId = data[0].id; lastId = parentId; cache.set(key, parentId); continue; }
+    if (data?.length) { parentId = data[0].id as string; lastId = parentId; cache.set(key, parentId); continue; }
 
     const { data: created, error } = await supabase.from('categories')
       .insert({ name: trimmed, slug: slugify(trimmed), parent_id: parentId }).select('id').single();

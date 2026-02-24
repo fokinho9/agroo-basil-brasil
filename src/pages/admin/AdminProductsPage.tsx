@@ -77,6 +77,37 @@ export default function AdminProductsPage() {
 
 
 
+  const getSizePresetsForCategory = (categoryName: string): string[] => {
+    const name = categoryName.toLowerCase();
+    if (name.includes('bota')) return Array.from({ length: 12 }, (_, i) => String(33 + i)); // 33-44
+    if (name.includes('camiseta') || name.includes('camisa') || name.includes('jaqueta') || name.includes('colete'))
+      return ['PP', 'P', 'M', 'G', 'GG'];
+    if (name.includes('calça') || name.includes('calca'))
+      return ['36', '38', '40', '42', '44', '46', '48', '50', '52', '54'];
+    if (name.includes('chapéu') || name.includes('chapeu'))
+      return ['53', '54', '55', '56', '57', '58', '59', '60', '61'];
+    return [];
+  };
+
+  const handleCategoryChange = (categoryId: string) => {
+    const cat = categories?.find(c => c.id === categoryId);
+    const parentCat = cat?.parent_id ? categories?.find(c => c.id === cat.parent_id) : null;
+    const catName = cat?.name || '';
+    const parentName = parentCat?.name || '';
+
+    // Try category name first, then parent name
+    let presets = getSizePresetsForCategory(catName);
+    if (presets.length === 0) presets = getSizePresetsForCategory(parentName);
+
+    // Only auto-fill if no sizes exist yet
+    const currentSizes = formData.variants.filter((v: any) => v.size && !v.addon);
+    const newVariants = currentSizes.length === 0 && presets.length > 0
+      ? [...formData.variants, ...presets.map(s => ({ size: s }))]
+      : formData.variants;
+
+    setFormData({ ...formData, category_id: categoryId, variants: newVariants });
+  };
+
   const resetForm = () => {
     setFormData({ name: '', description: '', price: '', original_price: '', image_url: '', images: [], category_id: '', stock: '', active: true, featured: false, variants: [] });
     setEditingProduct(null);
@@ -180,7 +211,7 @@ export default function AdminProductsPage() {
                               <CommandGroup key={parent.id} heading={parent.name}>
                                 <CommandItem
                                   value={parent.name}
-                                  onSelect={() => { setFormData({ ...formData, category_id: parent.id }); setCategoryOpen(false); }}
+                                  onSelect={() => { handleCategoryChange(parent.id); setCategoryOpen(false); }}
                                 >
                                   <Check className={`mr-2 h-4 w-4 ${formData.category_id === parent.id ? 'opacity-100' : 'opacity-0'}`} />
                                   {parent.name}
@@ -189,7 +220,7 @@ export default function AdminProductsPage() {
                                   <CommandItem
                                     key={child.id}
                                     value={child.name}
-                                    onSelect={() => { setFormData({ ...formData, category_id: child.id }); setCategoryOpen(false); }}
+                                    onSelect={() => { handleCategoryChange(child.id); setCategoryOpen(false); }}
                                   >
                                     <Check className={`mr-2 h-4 w-4 ${formData.category_id === child.id ? 'opacity-100' : 'opacity-0'}`} />
                                     └ {child.name}

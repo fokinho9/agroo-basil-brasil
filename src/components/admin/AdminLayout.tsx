@@ -18,6 +18,7 @@ import {
   MousePointerClick,
   Zap,
   Search,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -39,6 +40,7 @@ const menuItems = [
   { icon: Users, label: 'Usuários', path: '/fokinho/usuarios' },
   { icon: MousePointerClick, label: 'Comportamento', path: '/fokinho/comportamento' },
   { icon: Zap, label: 'Pixels & UTM', path: '/fokinho/pixels' },
+  { icon: Megaphone, label: 'Marketing', path: '/fokinho/marketing' },
   { icon: Search, label: 'SEO', path: '/fokinho/seo' },
   { icon: Settings, label: 'Configurações', path: '/fokinho/configuracoes' },
 ];

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
@@ -12,6 +12,10 @@ import { ScrollTracker } from '@/components/analytics/ScrollTracker';
 import { SectionTracker } from '@/components/analytics/SectionTracker';
 import { FeedbackWidget } from '@/components/analytics/FeedbackWidget';
 import { PollWidget } from '@/components/analytics/PollWidget';
+import { FreeShippingBar } from '@/components/marketing/FreeShippingBar';
+import { CountdownBar } from '@/components/marketing/CountdownBar';
+import { PopupBanner } from '@/components/marketing/PopupBanner';
+import { SocialProofNotification } from '@/components/marketing/SocialProofNotification';
 import { useCart } from '@/contexts/CartContext';
 
 interface LayoutProps {
@@ -25,28 +29,30 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Marketing bars */}
+      {!isCheckout && <CountdownBar />}
+      {!isCheckout && <FreeShippingBar />}
+      
       <Header />
       <main className="flex-1">{children}</main>
       
-      {/* Store Info - show on all pages except checkout */}
       {!isCheckout && <StoreInfo />}
       
       <Footer />
       
-      {/* Cart notification popup */}
       <CartNotification 
         product={lastAddedProduct}
         isVisible={showNotification}
         onClose={() => setShowNotification(false)}
       />
       
-      {/* Mini floating cart button (when cart is closed) */}
       {!isOpen && <MiniFloatingCart />}
-      
-      {/* Full cart panel */}
       <FloatingCart />
-      
       <WhatsAppButton />
+      
+      {/* Marketing */}
+      {!isCheckout && <PopupBanner />}
+      {!isCheckout && <SocialProofNotification />}
       
       {/* Analytics trackers */}
       <ClickTracker />

@@ -175,6 +175,72 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          min_purchase: number | null
+          used_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          min_purchase?: number | null
+          used_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          min_purchase?: number | null
+          used_count?: number
+        }
+        Relationships: []
+      }
+      email_captures: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           comment: string | null
@@ -543,6 +609,51 @@ export type Database = {
         }
         Relationships: []
       }
+      popup_banners: {
+        Row: {
+          active: boolean
+          button_link: string | null
+          button_text: string | null
+          created_at: string
+          delay_seconds: number
+          description: string | null
+          id: string
+          image_url: string | null
+          popup_type: string
+          show_on_pages: string[] | null
+          show_once: boolean
+          title: string | null
+        }
+        Insert: {
+          active?: boolean
+          button_link?: string | null
+          button_text?: string | null
+          created_at?: string
+          delay_seconds?: number
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          popup_type?: string
+          show_on_pages?: string[] | null
+          show_once?: boolean
+          title?: string | null
+        }
+        Update: {
+          active?: boolean
+          button_link?: string | null
+          button_text?: string | null
+          created_at?: string
+          delay_seconds?: number
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          popup_type?: string
+          show_on_pages?: string[] | null
+          show_once?: boolean
+          title?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean | null
@@ -604,6 +715,106 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quiz_questions: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          options: Json
+          question: string
+          quiz_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          options?: Json
+          question: string
+          quiz_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          options?: Json
+          question?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_results: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          match_rules: Json
+          quiz_id: string
+          recommended_category_slug: string | null
+          recommended_product_ids: string[] | null
+          result_label: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          match_rules?: Json
+          quiz_id: string
+          recommended_category_slug?: string | null
+          recommended_product_ids?: string[] | null
+          result_label: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          match_rules?: Json
+          quiz_id?: string
+          recommended_category_slug?: string | null
+          recommended_product_ids?: string[] | null
+          result_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_results_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+        }
+        Relationships: []
       }
       reviews: {
         Row: {

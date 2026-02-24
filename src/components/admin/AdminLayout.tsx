@@ -36,6 +36,7 @@ const menuItems = [
   { icon: ShoppingCart, label: 'Pedidos', path: '/fokinho/pedidos' },
   { icon: ShoppingBag, label: 'Carrinhos', path: '/fokinho/carrinhos' },
   { icon: Image, label: 'Banners', path: '/fokinho/banners' },
+  { icon: LayoutDashboard, label: 'Homepage', path: '/fokinho/homepage' },
   { icon: FileUp, label: 'Importar', path: '/fokinho/importar' },
   { icon: Users, label: 'Usuários', path: '/fokinho/usuarios' },
   { icon: MousePointerClick, label: 'Comportamento', path: '/fokinho/comportamento' },

@@ -229,7 +229,7 @@ export default function AdminPixelsPage() {
         </div>
 
         <Tabs defaultValue="config">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="config" className="gap-2">
               <Code className="h-4 w-4" /> Configurar Pixels
             </TabsTrigger>

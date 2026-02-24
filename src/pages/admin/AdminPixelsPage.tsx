@@ -16,7 +16,9 @@ import {
   Save, Download, Code, Eye, ShoppingCart, CreditCard,
   Facebook, Chrome, Tv, Camera, Share2, Zap, BookOpen,
 } from 'lucide-react';
-import { GoogleAdsGuide } from '@/components/admin/GoogleAdsGuide';
+import { GoogleAdsGuide } from '@/components/admin/guides/GoogleAdsGuide';
+import { MetaAdsGuide } from '@/components/admin/guides/MetaAdsGuide';
+import { TikTokAdsGuide } from '@/components/admin/guides/TikTokAdsGuide';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -239,6 +241,12 @@ export default function AdminPixelsPage() {
             </TabsTrigger>
             <TabsTrigger value="google-ads-guide" className="gap-2">
               <BookOpen className="h-4 w-4" /> Guia Google Ads
+            </TabsTrigger>
+            <TabsTrigger value="meta-ads-guide" className="gap-2">
+              <Facebook className="h-4 w-4" /> Guia Meta Ads
+            </TabsTrigger>
+            <TabsTrigger value="tiktok-ads-guide" className="gap-2">
+              <Tv className="h-4 w-4" /> Guia TikTok Ads
             </TabsTrigger>
           </TabsList>
 
@@ -506,6 +514,16 @@ export default function AdminPixelsPage() {
           {/* Google Ads Guide Tab */}
           <TabsContent value="google-ads-guide">
             <GoogleAdsGuide />
+          </TabsContent>
+
+          {/* Meta Ads Guide Tab */}
+          <TabsContent value="meta-ads-guide">
+            <MetaAdsGuide />
+          </TabsContent>
+
+          {/* TikTok Ads Guide Tab */}
+          <TabsContent value="tiktok-ads-guide">
+            <TikTokAdsGuide />
           </TabsContent>
         </Tabs>
       </div>

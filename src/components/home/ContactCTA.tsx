@@ -1,9 +1,16 @@
 import { MessageCircle, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUtmDefaults, appendUtmToUrl } from '@/hooks/useUtmDefaults';
 
 export function ContactCTA() {
+  const utmDefaults = useUtmDefaults();
   const whatsappNumber = '5511972238165';
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Olá! Gostaria de mais informações sobre os produtos.`;
+  const trackedUrl = appendUtmToUrl(window.location.origin, {
+    utm_source: utmDefaults.whatsapp_source,
+    utm_medium: utmDefaults.whatsapp_medium,
+    utm_campaign: utmDefaults.whatsapp_campaign || 'contact-cta',
+  });
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Olá! Gostaria de mais informações sobre os produtos.\n\n${trackedUrl}`)}`;
 
   return (
     <section className="py-12 md:py-16 bg-primary text-primary-foreground">

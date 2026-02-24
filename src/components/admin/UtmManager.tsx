@@ -305,6 +305,324 @@ function UtmDashboard() {
   );
 }
 
+// ---- UTM ROI Report ----
+
+function UtmRoiReport() {
+  const [days, setDays] = useState(30);
+
+  const { data: pageViews = [] } = useQuery({
+    queryKey: ['utm-roi-views', days],
+    queryFn: async () => {
+      const since = subDays(new Date(), days).toISOString();
+      let all: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('page_views')
+          .select('utm_source, utm_medium, utm_campaign, session_id, created_at')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + 999);
+        if (error) throw error;
+        all = all.concat(data || []);
+        if (!data || data.length < 1000) break;
+        offset += 1000;
+      }
+      return all;
+    },
+    refetchInterval: 120000,
+  });
+
+  const { data: orders = [] } = useQuery({
+    queryKey: ['utm-roi-orders', days],
+    queryFn: async () => {
+      const since = subDays(new Date(), days).toISOString();
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, total, status, created_at, customer_name')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 120000,
+  });
+
+  // Build session -> UTM mapping
+  const sessionUtm = useMemo(() => {
+    const map: Record<string, { source: string; medium: string; campaign: string }> = {};
+    for (const v of pageViews) {
+      if (v.utm_source || v.utm_campaign) {
+        if (!map[v.session_id]) {
+          map[v.session_id] = {
+            source: v.utm_source || '(direto)',
+            medium: v.utm_medium || '(nenhum)',
+            campaign: v.utm_campaign || '(sem campanha)',
+          };
+        }
+      }
+    }
+    return map;
+  }, [pageViews]);
+
+  // Attribution: match orders to UTM sessions by time proximity
+  // Simple last-touch: find the most recent UTM session before each order
+  const attributedOrders = useMemo(() => {
+    const utmSessions = Object.entries(sessionUtm);
+    if (utmSessions.length === 0) return [];
+
+    // Get session timestamps
+    const sessionTimes: Record<string, Date> = {};
+    for (const v of pageViews) {
+      if (sessionUtm[v.session_id]) {
+        const t = new Date(v.created_at);
+        if (!sessionTimes[v.session_id] || t > sessionTimes[v.session_id]) {
+          sessionTimes[v.session_id] = t;
+        }
+      }
+    }
+
+    return orders.map((order: any) => {
+      const orderTime = new Date(order.created_at);
+      // Find closest UTM session within 24h before order
+      let bestSession: string | null = null;
+      let bestDiff = Infinity;
+      for (const [sid, time] of Object.entries(sessionTimes)) {
+        const diff = orderTime.getTime() - time.getTime();
+        if (diff >= 0 && diff < 24 * 60 * 60 * 1000 && diff < bestDiff) {
+          bestDiff = diff;
+          bestSession = sid;
+        }
+      }
+      return {
+        ...order,
+        utm: bestSession ? sessionUtm[bestSession] : null,
+      };
+    });
+  }, [orders, sessionUtm, pageViews]);
+
+  // Aggregate by campaign
+  const roiByCampaign = useMemo(() => {
+    const map: Record<string, { source: string; medium: string; orders: number; revenue: number; sessions: number }> = {};
+    
+    // Count sessions per campaign
+    const campaignSessions: Record<string, Set<string>> = {};
+    for (const v of pageViews) {
+      if (v.utm_campaign) {
+        const key = v.utm_campaign;
+        if (!campaignSessions[key]) campaignSessions[key] = new Set();
+        campaignSessions[key].add(v.session_id);
+        if (!map[key]) {
+          map[key] = { source: v.utm_source || '', medium: v.utm_medium || '', orders: 0, revenue: 0, sessions: 0 };
+        }
+      }
+    }
+
+    // Count orders per campaign
+    for (const order of attributedOrders) {
+      if (order.utm) {
+        const key = order.utm.campaign;
+        if (!map[key]) {
+          map[key] = { source: order.utm.source, medium: order.utm.medium, orders: 0, revenue: 0, sessions: 0 };
+        }
+        map[key].orders++;
+        map[key].revenue += order.total || 0;
+      }
+    }
+
+    // Set session counts
+    for (const [key, sessions] of Object.entries(campaignSessions)) {
+      if (map[key]) map[key].sessions = sessions.size;
+    }
+
+    return Object.entries(map)
+      .map(([campaign, data]) => ({
+        campaign,
+        ...data,
+        conversionRate: data.sessions > 0 ? (data.orders / data.sessions * 100) : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [pageViews, attributedOrders]);
+
+  // By source
+  const roiBySource = useMemo(() => {
+    const map: Record<string, { orders: number; revenue: number; sessions: number }> = {};
+    const sourceSessions: Record<string, Set<string>> = {};
+    
+    for (const v of pageViews) {
+      if (v.utm_source) {
+        const key = `${v.utm_source} / ${v.utm_medium || '(nenhum)'}`;
+        if (!sourceSessions[key]) sourceSessions[key] = new Set();
+        sourceSessions[key].add(v.session_id);
+        if (!map[key]) map[key] = { orders: 0, revenue: 0, sessions: 0 };
+      }
+    }
+
+    for (const order of attributedOrders) {
+      if (order.utm) {
+        const key = `${order.utm.source} / ${order.utm.medium}`;
+        if (!map[key]) map[key] = { orders: 0, revenue: 0, sessions: 0 };
+        map[key].orders++;
+        map[key].revenue += order.total || 0;
+      }
+    }
+
+    for (const [key, sessions] of Object.entries(sourceSessions)) {
+      if (map[key]) map[key].sessions = sessions.size;
+    }
+
+    return Object.entries(map)
+      .map(([source, data]) => ({
+        source,
+        ...data,
+        conversionRate: data.sessions > 0 ? (data.orders / data.sessions * 100) : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [pageViews, attributedOrders]);
+
+  const totalAttributed = attributedOrders.filter(o => o.utm).length;
+  const totalRevenue = attributedOrders.filter(o => o.utm).reduce((s, o) => s + (o.total || 0), 0);
+  const totalOrders = orders.length;
+
+  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Relatório de ROI por UTM
+          </h3>
+          <p className="text-xs text-muted-foreground">Atribuição last-touch: pedidos vinculados à sessão UTM mais recente (24h)</p>
+        </div>
+        <Tabs value={String(days)} onValueChange={(v) => setDays(Number(v))}>
+          <TabsList>
+            <TabsTrigger value="7">7 dias</TabsTrigger>
+            <TabsTrigger value="30">30 dias</TabsTrigger>
+            <TabsTrigger value="90">90 dias</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{totalOrders}</p>
+            <p className="text-xs text-muted-foreground">Pedidos Total</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{totalAttributed}</p>
+            <p className="text-xs text-muted-foreground">Atribuídos a UTM</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{formatCurrency(totalRevenue)}</p>
+            <p className="text-xs text-muted-foreground">Receita UTM</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary">
+              {totalOrders > 0 ? Math.round(totalAttributed / totalOrders * 100) : 0}%
+            </p>
+            <p className="text-xs text-muted-foreground">Taxa Atribuição</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* By Campaign */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">ROI por Campanha</CardTitle>
+          <CardDescription className="text-xs">Campanhas ordenadas por receita gerada</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {roiByCampaign.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma campanha com dados no período</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Campanha</TableHead>
+                    <TableHead>Origem</TableHead>
+                    <TableHead className="text-right">Sessões</TableHead>
+                    <TableHead className="text-right">Pedidos</TableHead>
+                    <TableHead className="text-right">Receita</TableHead>
+                    <TableHead className="text-right">Conv. %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roiByCampaign.map((r) => (
+                    <TableRow key={r.campaign}>
+                      <TableCell className="font-medium text-sm">{r.campaign}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.source}/{r.medium}</TableCell>
+                      <TableCell className="text-right text-sm">{r.sessions}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{r.orders}</TableCell>
+                      <TableCell className="text-right text-sm font-bold text-primary">{formatCurrency(r.revenue)}</TableCell>
+                      <TableCell className="text-right text-sm">
+                        <Badge variant={r.conversionRate > 2 ? 'default' : 'secondary'} className="text-xs">
+                          {r.conversionRate.toFixed(1)}%
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* By Source */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">ROI por Origem / Meio</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {roiBySource.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Origem / Meio</TableHead>
+                    <TableHead className="text-right">Sessões</TableHead>
+                    <TableHead className="text-right">Pedidos</TableHead>
+                    <TableHead className="text-right">Receita</TableHead>
+                    <TableHead className="text-right">Conv. %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roiBySource.map((r) => (
+                    <TableRow key={r.source}>
+                      <TableCell className="font-medium text-sm">{r.source}</TableCell>
+                      <TableCell className="text-right text-sm">{r.sessions}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{r.orders}</TableCell>
+                      <TableCell className="text-right text-sm font-bold text-primary">{formatCurrency(r.revenue)}</TableCell>
+                      <TableCell className="text-right text-sm">
+                        <Badge variant={r.conversionRate > 2 ? 'default' : 'secondary'} className="text-xs">
+                          {r.conversionRate.toFixed(1)}%
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ---- Default UTM Settings ----
 
 function UtmDefaultSettings() {
@@ -523,6 +841,9 @@ export function UtmManager() {
           <TabsTrigger value="dashboard" className="gap-2">
             <BarChart3 className="h-4 w-4" /> Dashboard
           </TabsTrigger>
+          <TabsTrigger value="roi" className="gap-2">
+            <BarChart3 className="h-4 w-4" /> ROI
+          </TabsTrigger>
           <TabsTrigger value="defaults" className="gap-2">
             <Settings className="h-4 w-4" /> UTMs Padrão
           </TabsTrigger>
@@ -537,6 +858,10 @@ export function UtmManager() {
 
         <TabsContent value="dashboard">
           <UtmDashboard />
+        </TabsContent>
+
+        <TabsContent value="roi">
+          <UtmRoiReport />
         </TabsContent>
 
         <TabsContent value="defaults">

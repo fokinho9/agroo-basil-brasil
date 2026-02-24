@@ -3,6 +3,7 @@ import { ShoppingCart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
 import { useFloatingButton } from '@/contexts/FloatingButtonContext';
+import { useUtmDefaults, appendUtmToUrl } from '@/hooks/useUtmDefaults';
 
 interface FloatingBuyButtonProps {
   productName: string;
@@ -21,10 +22,10 @@ export function FloatingBuyButton({
 }: FloatingBuyButtonProps) {
   const [isVisible, setIsVisible] = useState(false);
   const { setIsFloatingBuyVisible } = useFloatingButton();
+  const utmDefaults = useUtmDefaults();
 
   useEffect(() => {
     const handleScroll = () => {
-      // Show after scrolling 400px
       const visible = window.scrollY > 400;
       setIsVisible(visible);
       setIsFloatingBuyVisible(visible);
@@ -39,9 +40,15 @@ export function FloatingBuyButton({
 
   const handleWhatsApp = () => {
     const isPriceOnRequest = price === 0;
-    const message = isPriceOnRequest
+    const baseMsg = isPriceOnRequest
       ? `Olá! Gostaria de saber o preço do produto: ${productName}`
       : `Olá! Tenho interesse no produto: ${productName} - ${formatCurrency(price)}`;
+    const trackedUrl = appendUtmToUrl(window.location.href, {
+      utm_source: utmDefaults.whatsapp_source,
+      utm_medium: utmDefaults.whatsapp_medium,
+      utm_campaign: utmDefaults.whatsapp_campaign || 'produto-whatsapp',
+    });
+    const message = `${baseMsg}\n\n${trackedUrl}`;
     window.open(createWhatsAppLink(whatsappNumber, message), '_blank');
   };
 

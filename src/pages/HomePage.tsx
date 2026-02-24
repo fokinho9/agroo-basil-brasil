@@ -48,6 +48,7 @@ export default function HomePage() {
         description="Compre produtos agropecuários de qualidade: selas, mantas para cavalo, vestuário country, botas, chapéus, cordas e mais. Entrega para todo o Brasil."
         keywords={['loja agro', 'produtos agropecuários', 'selaria', 'manta para cavalo', 'vestuário country', 'botas country', 'chapéu country', 'loja agropecuária online']}
         canonicalPath="/"
+        pageKey="home"
       />
       <ImageBanners />
       <FeaturedCategories />

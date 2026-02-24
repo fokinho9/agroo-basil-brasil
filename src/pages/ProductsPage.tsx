@@ -185,6 +185,7 @@ export default function ProductsPage() {
         description={searchTerm ? `Resultados de busca para "${searchTerm}" na Agro Brasil.` : currentCategory ? `Compre ${currentCategory.name} na Agro Brasil. Produtos de qualidade com entrega para todo o Brasil.` : 'Explore todos os produtos agropecuários da Agro Brasil: selaria, vestuário country, mantas, botas e mais.'}
         keywords={['produtos agropecuários', 'selaria', 'vestuário country', currentCategory?.name || ''].filter(Boolean)}
         canonicalPath={slug ? `/categoria/${slug}` : '/produtos'}
+        pageKey="products"
       />
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">

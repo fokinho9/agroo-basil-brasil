@@ -21,6 +21,7 @@ import {
   Ticket, Image, Brain, Megaphone, Plus, Trash2, Pencil, Gift,
   Timer, Users, Mail, TrendingUp, ShoppingBag,
 } from 'lucide-react';
+import QuizManager from '@/components/admin/QuizManager';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -193,6 +194,7 @@ export default function AdminMarketingPage() {
             <TabsTrigger value="countdown" className="gap-2"><Timer className="h-4 w-4" /> Countdown</TabsTrigger>
             <TabsTrigger value="social" className="gap-2"><Users className="h-4 w-4" /> Social Proof</TabsTrigger>
             <TabsTrigger value="leads" className="gap-2"><Mail className="h-4 w-4" /> Leads</TabsTrigger>
+            <TabsTrigger value="quizzes" className="gap-2"><Brain className="h-4 w-4" /> Quizzes</TabsTrigger>
           </TabsList>
 
           {/* COUPONS */}
@@ -395,6 +397,11 @@ export default function AdminMarketingPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* QUIZZES */}
+          <TabsContent value="quizzes">
+            <QuizManager />
           </TabsContent>
         </Tabs>
       </div>

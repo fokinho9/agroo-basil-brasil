@@ -71,10 +71,10 @@ export default function AdminMarketingPage() {
   const updateSetting = useUpdateSiteSetting();
 
   // Settings
-  const freeShippingMin = (settings?.find(s => s.key === 'free_shipping_min')?.value as any)?.value || 0;
-  const socialProofEnabled = (settings?.find(s => s.key === 'social_proof_enabled')?.value as any)?.value ?? false;
-  const countdownEnd = (settings?.find(s => s.key === 'countdown_end')?.value as any)?.value || '';
-  const countdownText = (settings?.find(s => s.key === 'countdown_text')?.value as any)?.value || '';
+  const freeShippingMin = (settings?.free_shipping_min as any)?.value || 0;
+  const socialProofEnabled = (settings?.social_proof_enabled as any)?.value ?? false;
+  const countdownEnd = (settings?.countdown_end as any)?.value || '';
+  const countdownText = (settings?.countdown_text as any)?.value || '';
 
   // Coupon dialog
   const [couponDialog, setCouponDialog] = useState(false);

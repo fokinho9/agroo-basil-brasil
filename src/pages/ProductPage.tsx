@@ -406,10 +406,16 @@ export default function ProductPage() {
           </div>
         </>}
 
-      {/* Reclame Aqui Banner */}
-      <a href="https://reclameaqui.com.br" target="_blank" rel="noopener noreferrer" className="block my-8">
-        <img src={reclameAquiBanner} alt="Perfil Oficial no Reclame Aqui" className="w-full max-w-3xl rounded-xl" />
-      </a>
+      {/* Reclame Aqui Banner - configurável pelo admin */}
+      {(() => {
+        const reclameConfig = (settings?.reclame_aqui as any) || { enabled: true, link: 'https://reclameaqui.com.br' };
+        if (!reclameConfig.enabled) return null;
+        return (
+          <a href={reclameConfig.link || 'https://reclameaqui.com.br'} target="_blank" rel="noopener noreferrer" className="block my-8">
+            <img src={reclameAquiBanner} alt="Perfil Oficial no Reclame Aqui" className="w-full max-w-3xl rounded-xl" />
+          </a>
+        );
+      })()}
 
       {/* Reviews Section */}
       <Separator className="my-10" />

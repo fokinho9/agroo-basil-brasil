@@ -171,9 +171,9 @@ export function generateFakeReviews(productId: string, count: number, productNam
     }
     usedComments.add(comment);
 
-    // Rating: mix of 3-5 stars (mostly 4-5)
+    // Rating: 4-5 stars only (minimum 4)
     const rand = Math.random();
-    const rating = rand > 0.85 ? 3 : rand > 0.4 ? 5 : 4;
+    const rating = rand > 0.45 ? 5 : 4;
 
     // Random date in the last 6 months
     const daysAgo = Math.floor(Math.random() * 180) + 1;

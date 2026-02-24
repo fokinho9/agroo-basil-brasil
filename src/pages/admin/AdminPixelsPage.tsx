@@ -14,14 +14,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Save, Download, Code, Eye, ShoppingCart, CreditCard,
-  Facebook, Chrome, Tv, Camera, Share2, Zap,
+  Facebook, Chrome, Tv, Camera, Share2, Zap, BookOpen,
 } from 'lucide-react';
+import { GoogleAdsGuide } from '@/components/admin/GoogleAdsGuide';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface PixelConfig {
   enabled: boolean;
   id: string;
+  conversionLabel?: string;
 }
 
 interface AllPixels {
@@ -235,6 +237,9 @@ export default function AdminPixelsPage() {
             <TabsTrigger value="export" className="gap-2">
               <Download className="h-4 w-4" /> Exportar Dados
             </TabsTrigger>
+            <TabsTrigger value="google-ads-guide" className="gap-2">
+              <BookOpen className="h-4 w-4" /> Guia Google Ads
+            </TabsTrigger>
           </TabsList>
 
           {/* Config Tab */}
@@ -269,6 +274,21 @@ export default function AdminPixelsPage() {
                         disabled={!pixel.enabled}
                         className="text-sm"
                       />
+                      {key === 'google_ads' && pixel.enabled && (
+                        <div className="mt-2">
+                          <Input
+                            placeholder="Conversion Label (ex: AbCdEfGhIjKlMn)"
+                            value={pixel.conversionLabel || ''}
+                            onChange={(e) =>
+                              setPixels({ ...pixels, [key]: { ...pixel, conversionLabel: e.target.value } })
+                            }
+                            className="text-sm"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Rótulo de conversão do Google Ads (veja o Guia Google Ads)
+                          </p>
+                        </div>
+                      )}
                       {pixel.enabled && pixel.id && (
                         <Badge variant="outline" className="mt-2 text-xs text-green-600 border-green-300">
                           ✓ Ativo
@@ -481,6 +501,11 @@ export default function AdminPixelsPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Google Ads Guide Tab */}
+          <TabsContent value="google-ads-guide">
+            <GoogleAdsGuide />
           </TabsContent>
         </Tabs>
       </div>

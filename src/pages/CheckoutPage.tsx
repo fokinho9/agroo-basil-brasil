@@ -1,7 +1,7 @@
 import { Seo } from '@/components/seo/Seo';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote, MessageCircle } from 'lucide-react';
+import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote, MessageCircle, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -104,6 +104,8 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
   const [abandonedCartSaved, setAbandonedCartSaved] = useState(false);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [proofUploaded, setProofUploaded] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -332,10 +334,32 @@ export default function CheckoutPage() {
       });
 
       setOrderId(order.id);
+
+      // For PIX on orders > R$800, redirect to WhatsApp then show payment page
+      if (paymentMethod === 'pix' && finalTotal > 800) {
+        // Redirect to WhatsApp first
+        const productsList = items.map(item => 
+          `• ${item.product.name} (${item.quantity}x) - ${formatCurrency(item.product.price * item.quantity)}`
+        ).join('\n');
+        const message = `*🛒 PEDIDO VIA PIX*\n\n` +
+          `*Pedido:* #${order.id.slice(0, 8)}\n` +
+          `*Cliente:* ${formData.name}\n` +
+          `*Telefone:* ${formData.phone}\n\n` +
+          `*📦 Produtos:*\n${productsList}\n\n` +
+          `*💰 Valor Total:* ${formatCurrency(finalTotal)}\n\n` +
+          `Gostaria de pagar via PIX. Aguardo os dados para pagamento.`;
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`https://wa.me/${storePhone}?text=${encodedMessage}`, '_blank');
+      }
+
+      // Generate a simple PIX code for the store
+      if (paymentMethod === 'pix') {
+        const pixKey = settings?.store?.pix_key || storePhone;
+        setPixCode(pixKey);
+      }
+
       setCurrentStep('payment');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // StreetPay PIX desativado temporariamente
     } catch (error) {
       console.error('Error creating order:', error);
       toast.error('Erro ao processar pedido. Tente novamente.');
@@ -402,6 +426,40 @@ export default function CheckoutPage() {
     setTimeout(() => setCopied(false), 3000);
   };
 
+  const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !orderId) return;
+
+    setIsUploadingProof(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const filePath = `proofs/${orderId}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file, { contentType: file.type, upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      // Save proof URL in order notes
+      await updateOrder.mutateAsync({
+        id: orderId,
+        notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}Comprovante PIX: ${publicUrlData.publicUrl}`,
+      });
+
+      setProofUploaded(true);
+      toast.success('Comprovante enviado com sucesso! Seu pedido será processado mais rapidamente.');
+    } catch (error: any) {
+      toast.error('Erro ao enviar comprovante. Tente novamente.');
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
   const loadChangeNowWidget = async () => {
     setIsLoadingWidget(true);
     try {
@@ -459,7 +517,19 @@ export default function CheckoutPage() {
                   onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
                   className="flex flex-col gap-3"
                 >
-                  {/* PIX desativado temporariamente */}
+                  {/* PIX - show for orders up to R$800 */}
+                  {finalTotal <= 800 && (
+                    <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+                      <RadioGroupItem value="pix" id="pix" />
+                      <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Banknote className="h-5 w-5 text-primary" />
+                        <div>
+                          <span>PIX</span>
+                          <p className="text-xs text-success font-medium">5% de desconto</p>
+                        </div>
+                      </Label>
+                    </div>
+                  )}
                   
                   {/* Card - always show */}
                   <div className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
@@ -495,6 +565,16 @@ export default function CheckoutPage() {
                     Aguarde a confirmação do pagamento
                   </p>
                 </>
+              ) : paymentMethod === 'pix' ? (
+                <>
+                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Banknote className="h-10 w-10 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl md:text-2xl">Pagamento via PIX</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {finalTotal > 800 ? 'Você foi redirecionado ao WhatsApp. Copie o código PIX abaixo.' : 'Copie o código PIX e faça o pagamento'}
+                  </p>
+                </>
               ) : paymentMethod === 'whatsapp' ? (
                 <>
                   <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -518,7 +598,78 @@ export default function CheckoutPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* PIX UI desativado temporariamente */}
+              {/* PIX Payment */}
+              {paymentStatus !== 'paid' && paymentMethod === 'pix' && (
+                <>
+                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor com 5% de desconto</p>
+                    <p className="text-3xl md:text-4xl font-bold text-primary">{formatCurrency(finalTotal * 0.95)}</p>
+                  </div>
+
+                  {pixCode && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Chave PIX</Label>
+                      <div className="flex gap-2">
+                        <Input value={pixCode} readOnly className="font-mono text-sm" />
+                        <Button variant="outline" onClick={handleCopyPix} className="gap-2 shrink-0">
+                          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          {copied ? 'Copiado!' : 'Copiar'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comprovante upload - optional */}
+                  {copied && !proofUploaded && (
+                    <div className="bg-muted rounded-xl p-4 space-y-3">
+                      <p className="text-sm font-medium">📎 Enviar comprovante (opcional)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Envie o comprovante para agilizar a confirmação do seu pedido.
+                      </p>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          id="proof-upload"
+                          onChange={handleProofUpload}
+                        />
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2"
+                          onClick={() => document.getElementById('proof-upload')?.click()}
+                          disabled={isUploadingProof}
+                        >
+                          {isUploadingProof ? (
+                            <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
+                          ) : (
+                            <><Upload className="h-4 w-4" /> Enviar Comprovante</>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {proofUploaded && (
+                    <div className="flex items-center gap-2 text-success text-sm bg-success/10 rounded-lg p-3">
+                      <Check className="h-4 w-4" />
+                      Comprovante enviado! Seu pedido será processado mais rapidamente.
+                    </div>
+                  )}
+
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={() => {
+                      setPaymentStatus('paid');
+                      clearCart();
+                      toast.success('Pedido registrado! Aguarde a confirmação.');
+                    }}
+                  >
+                    Já fiz o pagamento
+                  </Button>
+                </>
+              )}
 
               {paymentStatus !== 'paid' && paymentMethod === 'card' && (
                 <>
@@ -633,14 +784,13 @@ export default function CheckoutPage() {
                 </>
               )}
 
-              {(paymentStatus === 'paid' || paymentMethod === 'pix') && paymentMethod !== 'whatsapp' && (
+              {paymentStatus === 'paid' && paymentMethod !== 'whatsapp' && paymentMethod !== 'pix' && (
                 <Button 
                   className="w-full" 
                   size="lg" 
                   onClick={handleFinish}
-                  variant={paymentStatus === 'paid' ? 'default' : 'outline'}
                 >
-                  {paymentStatus === 'paid' ? 'Voltar para a Loja' : 'Já fiz o pagamento'}
+                  Voltar para a Loja
                 </Button>
               )}
             </CardContent>

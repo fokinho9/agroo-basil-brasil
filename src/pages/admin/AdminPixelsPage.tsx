@@ -14,11 +14,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Save, Download, Code, Eye, ShoppingCart, CreditCard,
-  Facebook, Chrome, Tv, Camera, Share2, Zap, BookOpen,
+  Facebook, Chrome, Tv, Camera, Share2, Zap, BookOpen, Link2,
 } from 'lucide-react';
 import { GoogleAdsGuide } from '@/components/admin/guides/GoogleAdsGuide';
 import { MetaAdsGuide } from '@/components/admin/guides/MetaAdsGuide';
 import { TikTokAdsGuide } from '@/components/admin/guides/TikTokAdsGuide';
+import { UtmManager } from '@/components/admin/UtmManager';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -247,6 +248,9 @@ export default function AdminPixelsPage() {
             </TabsTrigger>
             <TabsTrigger value="tiktok-ads-guide" className="gap-2">
               <Tv className="h-4 w-4" /> Guia TikTok Ads
+            </TabsTrigger>
+            <TabsTrigger value="utm" className="gap-2">
+              <Link2 className="h-4 w-4" /> UTM
             </TabsTrigger>
           </TabsList>
 
@@ -524,6 +528,11 @@ export default function AdminPixelsPage() {
           {/* TikTok Ads Guide Tab */}
           <TabsContent value="tiktok-ads-guide">
             <TikTokAdsGuide />
+          </TabsContent>
+
+          {/* UTM Tab */}
+          <TabsContent value="utm">
+            <UtmManager />
           </TabsContent>
         </Tabs>
       </div>

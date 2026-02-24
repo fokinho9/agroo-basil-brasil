@@ -1,6 +1,9 @@
+import { Seo } from '@/components/seo/Seo';
+
 export default function ReturnsPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <Seo title="Trocas e Devoluções" description="Política de trocas e devoluções da Agro Brasil. Saiba como solicitar troca ou reembolso." canonicalPath="/trocas" />
       <h1 className="text-4xl font-bold text-foreground mb-6">Trocas e Devoluções</h1>
       
       <div className="prose prose-lg max-w-none text-muted-foreground">

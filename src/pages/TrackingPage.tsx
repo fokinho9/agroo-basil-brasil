@@ -1,3 +1,4 @@
+import { Seo } from '@/components/seo/Seo';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Truck, MapPin, CheckCircle, Search, Clock, AlertCircle, RefreshCw } from 'lucide-react';
@@ -108,6 +109,7 @@ export default function TrackingPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <Seo title="Rastrear Pedido" description="Rastreie seu pedido da Agro Brasil. Digite o código do pedido e acompanhe a entrega." canonicalPath="/rastreio" />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">

@@ -1,3 +1,4 @@
+import { Seo } from '@/components/seo/Seo';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote, MessageCircle } from 'lucide-react';
@@ -204,6 +205,7 @@ export default function CheckoutPage() {
   if (items.length === 0 && currentStep === 'cart') {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
+        <Seo title="Checkout" description="Finalize sua compra na Agro Brasil." noindex />
         <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-foreground mb-2">Seu carrinho está vazio</h1>
         <p className="text-muted-foreground mb-6">Adicione produtos para continuar com a compra</p>

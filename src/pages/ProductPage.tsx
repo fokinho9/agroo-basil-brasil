@@ -1,3 +1,4 @@
+import { Seo } from '@/components/seo/Seo';
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ShoppingCart, MessageCircle, Minus, Plus, ChevronLeft, ChevronRight, Check, Star, Shield, Truck, CreditCard, Clock, Users, Flame, AlertTriangle } from 'lucide-react';
@@ -198,6 +199,14 @@ export default function ProductPage() {
     setCurrentImageIndex(prev => (prev - 1 + images.length) % images.length);
   };
   return <div className="container mx-auto px-4 py-6 md:py-8 overflow-hidden">
+      <Seo
+        title={product.name}
+        description={product.description ? product.description.slice(0, 155).replace(/\*\*/g, '') : `Compre ${product.name} na Agro Brasil. Qualidade garantida e entrega rápida.`}
+        keywords={[product.name, product.category?.name || '', 'agro brasil'].filter(Boolean)}
+        image={product.image_url || undefined}
+        canonicalPath={`/produto/${product.id}`}
+        type="product"
+      />
       <div className="grid md:grid-cols-2 gap-6 lg:gap-10">
         {/* Image Gallery */}
         <div className="space-y-3">

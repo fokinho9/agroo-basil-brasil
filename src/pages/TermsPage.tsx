@@ -1,6 +1,9 @@
+import { Seo } from '@/components/seo/Seo';
+
 export default function TermsPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <Seo title="Termos de Uso" description="Leia os termos e condições de uso do site Agro Brasil." canonicalPath="/termos" noindex />
       <h1 className="text-4xl font-bold text-foreground mb-6">Termos de Uso</h1>
       
       <div className="prose prose-lg max-w-none text-muted-foreground">

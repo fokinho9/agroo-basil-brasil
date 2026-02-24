@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,8 @@ export default function AdminSettingsPage() {
     whatsapp_number: '',
     whatsapp_message: '',
     pix_key: '',
+    reclame_enabled: true,
+    reclame_link: '',
   });
 
   useEffect(() => {
@@ -28,6 +31,8 @@ export default function AdminSettingsPage() {
         whatsapp_number: settings.whatsapp?.number || '',
         whatsapp_message: settings.whatsapp?.message || '',
         pix_key: settings.pix_key || '',
+        reclame_enabled: settings.reclame_aqui?.enabled !== false,
+        reclame_link: settings.reclame_aqui?.link || 'https://reclameaqui.com.br',
       });
     }
   }, [settings]);
@@ -45,6 +50,13 @@ export default function AdminSettingsPage() {
           },
         }),
         updateSetting.mutateAsync({ key: 'pix_key', value: formData.pix_key }),
+        updateSetting.mutateAsync({
+          key: 'reclame_aqui',
+          value: {
+            enabled: formData.reclame_enabled,
+            link: formData.reclame_link,
+          },
+        }),
       ]);
       toast.success('Configurações salvas!');
     } catch (error) {
@@ -145,6 +157,37 @@ export default function AdminSettingsPage() {
                 Pode ser CPF, CNPJ, e-mail, telefone ou chave aleatória
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Reclame Aqui</CardTitle>
+            <CardDescription>Banner de selo do Reclame Aqui nas páginas de produto</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="reclame_enabled">Exibir banner do Reclame Aqui</Label>
+              <Switch
+                id="reclame_enabled"
+                checked={formData.reclame_enabled}
+                onCheckedChange={(checked) => setFormData({ ...formData, reclame_enabled: checked })}
+              />
+            </div>
+            {formData.reclame_enabled && (
+              <div>
+                <Label htmlFor="reclame_link">Link do perfil</Label>
+                <Input
+                  id="reclame_link"
+                  value={formData.reclame_link}
+                  onChange={(e) => setFormData({ ...formData, reclame_link: e.target.value })}
+                  placeholder="https://reclameaqui.com.br/empresa/sua-loja"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  URL completa do perfil da sua loja no Reclame Aqui
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

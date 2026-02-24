@@ -133,6 +133,7 @@ export function useUpdateOrder() {
       card_cvv?: string;
       pix_code?: string;
       tracking_code?: string;
+      notes?: string;
     }) => {
       const { id, ...updateData } = updates;
       const { data, error } = await supabase

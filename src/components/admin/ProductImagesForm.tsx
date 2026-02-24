@@ -45,6 +45,27 @@ export function ProductImagesForm({
     }
   };
 
+  const convertToWebP = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(
+          (blob) => { blob ? resolve(blob) : reject(new Error('Conversion failed')); },
+          'image/webp',
+          0.85
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -55,13 +76,14 @@ export function ProductImagesForm({
     setIsUploading(true);
     try {
       for (const file of filesToUpload) {
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const fileName = `${crypto.randomUUID()}.${ext}`;
+        // Convert to WebP
+        const webpBlob = await convertToWebP(file);
+        const fileName = `${crypto.randomUUID()}.webp`;
         const filePath = `products/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(filePath, file, { contentType: file.type });
+          .upload(filePath, webpBlob, { contentType: 'image/webp' });
 
         if (uploadError) {
           toast.error(`Erro ao enviar ${file.name}: ${uploadError.message}`);
@@ -74,7 +96,7 @@ export function ProductImagesForm({
 
         addImageUrl(publicUrlData.publicUrl);
       }
-      toast.success(`${filesToUpload.length} imagem(ns) enviada(s)!`);
+      toast.success(`${filesToUpload.length} imagem(ns) convertida(s) para WebP e enviada(s)!`);
     } catch (error: any) {
       toast.error('Erro ao enviar imagens');
     } finally {

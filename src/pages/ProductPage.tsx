@@ -178,8 +178,6 @@ export default function ProductPage() {
   const discountPercent = hasDiscount ? Math.round((product.original_price! - product.price) / product.original_price! * 100) : 0;
   const averageRating = reviews && reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
 
-  // Fake stock for scarcity
-  const fakeStock = Math.floor(Math.random() * 8) + 3;
   const handleWhatsApp = () => {
     const whatsappSettings = settings?.whatsapp || {
       number: '5511972238165'
@@ -330,9 +328,9 @@ export default function ProductPage() {
               <AlertTriangle className="h-5 w-5 text-primary flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-primary">
-                  Restam apenas {fakeStock} unidades!
+                  Últimas unidades disponíveis!
                 </p>
-                <Progress value={fakeStock / 15 * 100} className="h-1.5 mt-1 [&>div]:bg-primary" />
+                <Progress value={40} className="h-1.5 mt-1 [&>div]:bg-primary" />
               </div>
             </div>}
 

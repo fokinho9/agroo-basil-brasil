@@ -219,11 +219,6 @@ export default function ProductsPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">{pageTitle}</h1>
-              {data && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {data.totalCount} produto{data.totalCount !== 1 ? 's' : ''} encontrado{data.totalCount !== 1 ? 's' : ''}
-                </p>
-              )}
             </div>
 
             {/* Mobile Filter Button */}

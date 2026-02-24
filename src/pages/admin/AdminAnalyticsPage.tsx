@@ -352,39 +352,59 @@ export default function AdminAnalyticsPage() {
       sessMap.set(v.session_id, arr);
     }
 
-    const result = Array.from(sessMap.entries()).map(([sessionId, views]) => {
-      const sorted = [...views].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      const firstView = sorted[0];
-      const lastView = sorted[sorted.length - 1];
-      const durationMs = new Date(lastView.created_at).getTime() - new Date(firstView.created_at).getTime();
+    const result = Array.from(sessMap.entries())
+      .filter(([, views]) => {
+        // Filter out bots/crawlers/non-real users
+        const first = views[0];
+        const browser = (first.browser || '').toLowerCase();
+        const source = (first.source_label || '').toLowerCase();
+        const referrer = (first.referrer || '').toLowerCase();
+        
+        // Known bot user-agent keywords
+        const botKeywords = ['bot', 'crawler', 'spider', 'headless', 'phantom', 'lighthouse', 'pagespeed', 'preview', 'slurp', 'mediapartners', 'adsbot', 'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp', 'telegrambot', 'bingpreview', 'googlebot', 'yandex', 'baidu', 'semrush', 'ahrefs', 'mj12bot', 'dotbot', 'petalbot', 'bytespider'];
+        if (botKeywords.some(k => browser.includes(k))) return false;
+        
+        // Single-page sessions with 0 duration from known bot referrers
+        const botReferrers = ['semrush', 'ahrefs', 'majestic', 'moz.com', 'serpstat'];
+        if (views.length === 1 && botReferrers.some(k => referrer.includes(k))) return false;
+        
+        // Filter "Desconhecido" browser with single page view (likely bot)
+        if (browser === 'desconhecido' && views.length === 1) return false;
+        
+        return true;
+      })
+      .map(([sessionId, views]) => {
+        const sorted = [...views].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        const firstView = sorted[0];
+        const lastView = sorted[sorted.length - 1];
+        const durationMs = new Date(lastView.created_at).getTime() - new Date(firstView.created_at).getTime();
 
-      // Calculate time per page
-      const pageTimings = sorted.map((v, i) => {
-        const nextTime = i < sorted.length - 1 ? new Date(sorted[i + 1].created_at).getTime() : new Date(v.created_at).getTime() + 30000;
-        const timeMs = nextTime - new Date(v.created_at).getTime();
-        return { path: v.path, timeMs, timestamp: v.created_at };
-      });
+        const pageTimings = sorted.map((v, i) => {
+          const nextTime = i < sorted.length - 1 ? new Date(sorted[i + 1].created_at).getTime() : new Date(v.created_at).getTime() + 30000;
+          const timeMs = nextTime - new Date(v.created_at).getTime();
+          return { path: v.path, timeMs, timestamp: v.created_at };
+        });
 
-      return {
-        sessionId,
-        pages: sorted.length,
-        startTime: firstView.created_at,
-        endTime: lastView.created_at,
-        durationMs,
-        device: firstView.device_type || 'desktop',
-        browser: firstView.browser || 'Desconhecido',
-        source: firstView.source_label,
-        utmSource: firstView.utm_source,
-        utmMedium: firstView.utm_medium,
-        utmCampaign: firstView.utm_campaign,
-        country: firstView.country || 'Brasil',
-        region: firstView.region || '',
-        city: firstView.city || '',
-        referrer: firstView.referrer,
-        journey: sorted.map(v => v.path),
-        pageTimings,
-      };
-    }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+        return {
+          sessionId,
+          pages: sorted.length,
+          startTime: firstView.created_at,
+          endTime: lastView.created_at,
+          durationMs,
+          device: firstView.device_type || 'desktop',
+          browser: firstView.browser || 'Desconhecido',
+          source: firstView.source_label,
+          utmSource: firstView.utm_source,
+          utmMedium: firstView.utm_medium,
+          utmCampaign: firstView.utm_campaign,
+          country: firstView.country || 'Brasil',
+          region: firstView.region || '',
+          city: firstView.city || '',
+          referrer: firstView.referrer,
+          journey: sorted.map(v => v.path),
+          pageTimings,
+        };
+      }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
     if (sessionSearch) {
       const q = sessionSearch.toLowerCase();

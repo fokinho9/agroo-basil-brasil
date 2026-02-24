@@ -217,6 +217,9 @@ export default function AdminOrdersPage() {
                     <p>{selectedOrder.customer_name}</p>
                     <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
                     <p className="text-muted-foreground">{formatPhone(selectedOrder.customer_phone)}</p>
+                    {selectedOrder.customer_cpf && (
+                      <p className="text-muted-foreground">CPF: {selectedOrder.customer_cpf}</p>
+                    )}
                   </div>
                   <div>
                     <h4 className="font-semibold mb-2">Endereço</h4>

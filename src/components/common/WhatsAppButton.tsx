@@ -2,10 +2,12 @@ import { MessageCircle } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { useFloatingButton } from '@/contexts/FloatingButtonContext';
 import { createWhatsAppLink } from '@/lib/utils';
+import { useUtmDefaults, appendUtmToUrl } from '@/hooks/useUtmDefaults';
 
 export function WhatsAppButton() {
   const { data: settings } = useSiteSettings();
   const { isFloatingBuyVisible } = useFloatingButton();
+  const utmDefaults = useUtmDefaults();
 
   const whatsappSettings = settings?.whatsapp || {
     number: '5511972238165',
@@ -13,7 +15,14 @@ export function WhatsAppButton() {
   };
 
   const handleClick = () => {
-    window.open(createWhatsAppLink(whatsappSettings.number, whatsappSettings.message), '_blank');
+    const siteUrl = window.location.origin;
+    const trackedUrl = appendUtmToUrl(siteUrl, {
+      utm_source: utmDefaults.whatsapp_source,
+      utm_medium: utmDefaults.whatsapp_medium,
+      utm_campaign: utmDefaults.whatsapp_campaign || 'whatsapp-button',
+    });
+    const message = `${whatsappSettings.message}\n\n${trackedUrl}`;
+    window.open(createWhatsAppLink(whatsappSettings.number, message), '_blank');
   };
 
   return (

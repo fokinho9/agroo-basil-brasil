@@ -1,0 +1,1 @@
+UPDATE reviews SET rating = 4 WHERE rating < 4;

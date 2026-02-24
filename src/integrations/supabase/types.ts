@@ -679,6 +679,33 @@ export type Database = {
         }
         Relationships: []
       }
+      section_views: {
+        Row: {
+          created_at: string
+          id: string
+          path: string
+          section_id: string
+          session_id: string
+          time_visible_ms: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          path: string
+          section_id: string
+          session_id: string
+          time_visible_ms?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          path?: string
+          section_id?: string
+          session_id?: string
+          time_visible_ms?: number
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           created_at: string | null

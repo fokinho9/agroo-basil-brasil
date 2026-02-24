@@ -33,6 +33,7 @@ function MidBanner({ image, alt, link }: { image: string; alt: string; link: str
             src={image}
             alt={alt}
             className="w-full h-auto rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01] max-h-[200px] md:max-h-[300px] object-cover"
+            loading="lazy"
           />
         </Link>
       </div>
@@ -50,42 +51,53 @@ export default function HomePage() {
         canonicalPath="/"
         pageKey="home"
       />
-      <ImageBanners />
-      <FeaturedCategories />
-      <MantasSection />
+      <div data-section="hero-banners">
+        <ImageBanners />
+      </div>
+      <div data-section="categorias">
+        <FeaturedCategories />
+      </div>
+      <div data-section="mantas">
+        <MantasSection />
+      </div>
 
-      {/* Banner Ofertas + Promoções */}
       <MidBanner image={ofertasDesktop} alt="Ofertas Imperdíveis" link="/produtos" />
-      <PromotionSection />
+      <div data-section="promocoes">
+        <PromotionSection />
+      </div>
 
-      {/* Banner Chapéus + Produtos de Chapéus */}
       <MidBanner image={chapeusDesktop} alt="Chapéus Country" link="/categoria/vestuario-chapeus" />
-      <LatestProducts />
+      <div data-section="ultimos-produtos">
+        <LatestProducts />
+      </div>
 
-      {/* Banner Selas + Produtos de Selas */}
       <MidBanner image={selasDesktop} alt="Selas e Acessórios" link="/categoria/selaria-selas-e-acessorios" />
-      <CategoryProductsSection
-        categorySlug="selaria-selas-e-acessorios"
-        title="Selas e Acessórios"
-        subtitle="As melhores selas para sua montaria"
-        buttonLabel="Ver Todas"
-        limit={8}
-      />
+      <div data-section="selas">
+        <CategoryProductsSection
+          categorySlug="selaria-selas-e-acessorios"
+          title="Selas e Acessórios"
+          subtitle="As melhores selas para sua montaria"
+          buttonLabel="Ver Todas"
+          limit={8}
+        />
+      </div>
 
-      {/* Banner Jeans + Produtos de Calças */}
       <MidBanner image={jeansDesktop} alt="Calças Jeans Country" link="/categoria/vestuario-calcas" />
-      <CategoryProductsSection
-        categorySlug="vestuario-calcas"
-        title="Calças Jeans"
-        subtitle="Estilo e conforto no dia a dia"
-        buttonLabel="Ver Todas"
-        limit={8}
-      />
+      <div data-section="calcas-jeans">
+        <CategoryProductsSection
+          categorySlug="vestuario-calcas"
+          title="Calças Jeans"
+          subtitle="Estilo e conforto no dia a dia"
+          buttonLabel="Ver Todas"
+          limit={8}
+        />
+      </div>
 
-      <CTABanner />
+      <div data-section="cta-banner">
+        <CTABanner />
+      </div>
 
-      {/* Stats Section */}
-      <section className="py-12 md:py-16 bg-muted/50">
+      <section className="py-12 md:py-16 bg-muted/50" data-section="estatisticas">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {stats.map((stat, index) => (
@@ -101,7 +113,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <TestimonialsSection />
+      <div data-section="depoimentos">
+        <TestimonialsSection />
+      </div>
     </div>
   );
 }

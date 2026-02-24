@@ -5,9 +5,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { Seo } from '@/components/seo/Seo';
+
 export default function ContactPage() {
   return (
     <div className="container mx-auto px-4 py-12">
+      <Seo title="Contato" description="Entre em contato com a Agro Brasil. Atendimento por WhatsApp, telefone e e-mail. Estamos prontos para ajudar!" canonicalPath="/contato" />
       <h1 className="text-4xl font-bold text-foreground mb-6">Contato</h1>
       
       <div className="grid md:grid-cols-2 gap-12">

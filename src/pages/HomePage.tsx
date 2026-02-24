@@ -1,3 +1,4 @@
+import { Seo } from '@/components/seo/Seo';
 import { PromotionSection } from '@/components/home/PromotionSection';
 import { LatestProducts } from '@/components/home/LatestProducts';
 import { FeaturedCategories } from '@/components/home/FeaturedCategories';
@@ -42,6 +43,12 @@ function MidBanner({ image, alt, link }: { image: string; alt: string; link: str
 export default function HomePage() {
   return (
     <div>
+      <Seo
+        title="Loja Agropecuária Online"
+        description="Compre produtos agropecuários de qualidade: selas, mantas para cavalo, vestuário country, botas, chapéus, cordas e mais. Entrega para todo o Brasil."
+        keywords={['loja agro', 'produtos agropecuários', 'selaria', 'manta para cavalo', 'vestuário country', 'botas country', 'chapéu country', 'loja agropecuária online']}
+        canonicalPath="/"
+      />
       <ImageBanners />
       <FeaturedCategories />
       <MantasSection />

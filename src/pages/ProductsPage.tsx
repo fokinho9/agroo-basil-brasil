@@ -1,3 +1,4 @@
+import { Seo } from '@/components/seo/Seo';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { ProductGrid } from '@/components/products/ProductGrid';
 import { useProducts } from '@/hooks/useProducts';
@@ -179,6 +180,12 @@ export default function ProductsPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 md:py-8">
+      <Seo
+        title={pageTitle}
+        description={searchTerm ? `Resultados de busca para "${searchTerm}" na Agro Brasil.` : currentCategory ? `Compre ${currentCategory.name} na Agro Brasil. Produtos de qualidade com entrega para todo o Brasil.` : 'Explore todos os produtos agropecuários da Agro Brasil: selaria, vestuário country, mantas, botas e mais.'}
+        keywords={['produtos agropecuários', 'selaria', 'vestuário country', currentCategory?.name || ''].filter(Boolean)}
+        canonicalPath={slug ? `/categoria/${slug}` : '/produtos'}
+      />
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
         <Link to="/" className="hover:text-foreground transition-colors">Início</Link>

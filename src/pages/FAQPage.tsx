@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Seo } from '@/components/seo/Seo';
 
 const faqs = [
   {
@@ -51,6 +52,7 @@ const faqs = [
 export default function FAQPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <Seo title="Perguntas Frequentes" description="Tire suas dúvidas sobre compras, pagamento, entrega, trocas e devoluções na Agro Brasil." canonicalPath="/faq" />
       <h1 className="text-4xl font-bold text-foreground mb-6">Perguntas Frequentes</h1>
       
       <p className="text-lg text-muted-foreground mb-8">

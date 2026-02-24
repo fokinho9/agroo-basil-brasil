@@ -1,8 +1,10 @@
 import { Layout } from '@/components/layout/Layout';
+import { Seo } from '@/components/seo/Seo';
 
 export default function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-12">
+      <Seo title="Sobre Nós" description="Conheça a Agro Brasil: anos de experiência em produtos agropecuários, selaria e vestuário country. Qualidade e compromisso com o campo." canonicalPath="/sobre" />
       <h1 className="text-4xl font-bold text-foreground mb-6">Sobre Nós</h1>
       
       <div className="prose prose-lg max-w-none">

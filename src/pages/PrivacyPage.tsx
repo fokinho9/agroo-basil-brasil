@@ -1,6 +1,9 @@
+import { Seo } from '@/components/seo/Seo';
+
 export default function PrivacyPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <Seo title="Política de Privacidade" description="Saiba como a Agro Brasil protege seus dados pessoais e sua privacidade." canonicalPath="/privacidade" noindex />
       <h1 className="text-4xl font-bold text-foreground mb-6">Política de Privacidade</h1>
       
       <div className="prose prose-lg max-w-none text-muted-foreground">

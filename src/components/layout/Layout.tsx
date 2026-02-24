@@ -9,6 +9,7 @@ import { WhatsAppButton } from '@/components/common/WhatsAppButton';
 import { StoreInfo } from '@/components/common/StoreInfo';
 import { ClickTracker } from '@/components/analytics/ClickTracker';
 import { ScrollTracker } from '@/components/analytics/ScrollTracker';
+import { SectionTracker } from '@/components/analytics/SectionTracker';
 import { FeedbackWidget } from '@/components/analytics/FeedbackWidget';
 import { PollWidget } from '@/components/analytics/PollWidget';
 import { useCart } from '@/contexts/CartContext';
@@ -50,6 +51,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Analytics trackers */}
       <ClickTracker />
       <ScrollTracker />
+      <SectionTracker />
       {!isCheckout && <FeedbackWidget />}
       {!isCheckout && <PollWidget />}
     </div>

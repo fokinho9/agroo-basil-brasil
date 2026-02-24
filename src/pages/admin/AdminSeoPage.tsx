@@ -17,16 +17,22 @@ interface PageSeo {
   ogImage: string;
 }
 
-const defaultPages: { key: string; label: string; path: string }[] = [
-  { key: 'home', label: 'Página Inicial', path: '/' },
-  { key: 'products', label: 'Listagem de Produtos', path: '/produtos' },
-  { key: 'about', label: 'Sobre Nós', path: '/sobre' },
-  { key: 'contact', label: 'Contato', path: '/contato' },
-  { key: 'faq', label: 'FAQ', path: '/faq' },
-  { key: 'returns', label: 'Trocas e Devoluções', path: '/trocas' },
-  { key: 'terms', label: 'Termos de Uso', path: '/termos' },
-  { key: 'privacy', label: 'Política de Privacidade', path: '/privacidade' },
-  { key: 'tracking', label: 'Rastrear Pedido', path: '/rastreio' },
+interface PageDefaults {
+  title: string;
+  description: string;
+  keywords: string;
+}
+
+const defaultPages: { key: string; label: string; path: string; defaults: PageDefaults }[] = [
+  { key: 'home', label: 'Página Inicial', path: '/', defaults: { title: 'Loja Agropecuária Online', description: 'Compre produtos agropecuários de qualidade: selas, mantas para cavalo, vestuário country, botas, chapéus e mais. Entrega para todo o Brasil.', keywords: 'loja agro, produtos agropecuários, selaria, manta para cavalo, vestuário country' } },
+  { key: 'products', label: 'Listagem de Produtos', path: '/produtos', defaults: { title: 'Todos os Produtos', description: 'Explore todos os produtos agropecuários da Agro Brasil: selaria, vestuário country, mantas, botas e mais.', keywords: 'produtos agropecuários, selaria, vestuário country' } },
+  { key: 'about', label: 'Sobre Nós', path: '/sobre', defaults: { title: 'Sobre Nós', description: 'Conheça a Agro Brasil: mais de 10 anos levando produtos agropecuários de qualidade para todo o Brasil.', keywords: 'sobre agro brasil, loja agropecuária, quem somos' } },
+  { key: 'contact', label: 'Contato', path: '/contato', defaults: { title: 'Contato', description: 'Entre em contato com a Agro Brasil. Atendimento por WhatsApp, telefone e e-mail.', keywords: 'contato agro brasil, whatsapp, atendimento' } },
+  { key: 'faq', label: 'FAQ', path: '/faq', defaults: { title: 'Perguntas Frequentes (FAQ)', description: 'Tire suas dúvidas sobre compras, pagamento, entrega, trocas e devoluções na Agro Brasil.', keywords: 'perguntas frequentes, faq, dúvidas' } },
+  { key: 'returns', label: 'Trocas e Devoluções', path: '/trocas', defaults: { title: 'Trocas e Devoluções', description: 'Política de trocas e devoluções da Agro Brasil conforme o Código de Defesa do Consumidor.', keywords: 'trocas, devoluções, reembolso' } },
+  { key: 'terms', label: 'Termos de Uso', path: '/termos', defaults: { title: 'Termos de Uso', description: 'Termos e condições de uso do site Agro Brasil.', keywords: 'termos de uso, condições' } },
+  { key: 'privacy', label: 'Política de Privacidade', path: '/privacidade', defaults: { title: 'Política de Privacidade', description: 'Política de privacidade da Agro Brasil conforme a LGPD.', keywords: 'política de privacidade, LGPD, dados pessoais' } },
+  { key: 'tracking', label: 'Rastrear Pedido', path: '/rastreio', defaults: { title: 'Rastrear Pedido', description: 'Rastreie seu pedido da Agro Brasil. Digite o código e acompanhe a entrega.', keywords: 'rastreio, rastrear pedido, entrega' } },
 ];
 
 export default function AdminSeoPage() {
@@ -169,16 +175,29 @@ export default function AdminSeoPage() {
                   <p className="text-xs text-muted-foreground">
                     Rota: <code className="bg-muted px-2 py-0.5 rounded">{page.path}</code>
                   </p>
+                  {/* Preview of what Google will see */}
+                  <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">🔍 Preview no Google:</p>
+                    <p className="text-sm text-primary font-medium truncate">
+                      {seoData[page.key]?.title || page.defaults.title} | Agro Brasil
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {`https://seudominio.com.br${page.path}`}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {seoData[page.key]?.description || page.defaults.description}
+                    </p>
+                  </div>
                   <div>
                     <Label>Título (max 60 caracteres)</Label>
                     <Input
                       value={seoData[page.key]?.title || ''}
                       onChange={(e) => updatePage(page.key, 'title', e.target.value)}
-                      placeholder="Título da página"
+                      placeholder={page.defaults.title}
                       maxLength={60}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {(seoData[page.key]?.title || '').length}/60 caracteres
+                      {(seoData[page.key]?.title || '').length}/60 {!(seoData[page.key]?.title) && <span className="text-primary">← Usando padrão: "{page.defaults.title}"</span>}
                     </p>
                   </div>
                   <div>
@@ -186,12 +205,12 @@ export default function AdminSeoPage() {
                     <Textarea
                       value={seoData[page.key]?.description || ''}
                       onChange={(e) => updatePage(page.key, 'description', e.target.value)}
-                      placeholder="Descrição para mecanismos de busca"
+                      placeholder={page.defaults.description}
                       maxLength={160}
                       rows={3}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {(seoData[page.key]?.description || '').length}/160 caracteres
+                      {(seoData[page.key]?.description || '').length}/160 {!(seoData[page.key]?.description) && <span className="text-primary">← Usando padrão</span>}
                     </p>
                   </div>
                   <div>
@@ -199,8 +218,11 @@ export default function AdminSeoPage() {
                     <Input
                       value={seoData[page.key]?.keywords || ''}
                       onChange={(e) => updatePage(page.key, 'keywords', e.target.value)}
-                      placeholder="selaria, mantas, vestuário country"
+                      placeholder={page.defaults.keywords}
                     />
+                    {!(seoData[page.key]?.keywords) && (
+                      <p className="text-xs text-primary mt-1">← Usando padrão: "{page.defaults.keywords}"</p>
+                    )}
                   </div>
                   <div>
                     <Label>Imagem OG (URL - opcional)</Label>

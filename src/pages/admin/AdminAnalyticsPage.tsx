@@ -241,7 +241,7 @@ export default function AdminAnalyticsPage() {
 
   const heatmapMax = useMemo(() => Math.max(1, ...hourlyHeatmap.flat()), [hourlyHeatmap]);
 
-  // *** NEW: Country data for globe ***
+  // *** Country data for globe ***
   const countryData = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const v of currentViews) {
@@ -249,6 +249,21 @@ export default function AdminAnalyticsPage() {
       counts[c] = (counts[c] || 0) + 1;
     }
     return Object.entries(counts).map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count);
+  }, [currentViews]);
+
+  // *** City/Region data for map ***
+  const cityData = useMemo(() => {
+    const counts: Record<string, { city: string; region: string; country: string; count: number }> = {};
+    for (const v of currentViews) {
+      const city = v.city;
+      const region = v.region || '';
+      const country = v.country || 'Brasil';
+      if (!city) continue;
+      const key = `${city}|${region}|${country}`;
+      if (!counts[key]) counts[key] = { city, region, country, count: 0 };
+      counts[key].count++;
+    }
+    return Object.values(counts).sort((a, b) => b.count - a.count);
   }, [currentViews]);
 
   // *** NEW: Referrer detail breakdown ***
@@ -473,8 +488,25 @@ export default function AdminAnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <AnalyticsGlobe countryData={countryData} />
-            {countryData.length > 0 && (
+            <AnalyticsGlobe countryData={countryData} cityData={cityData} />
+            {/* City/Region breakdown */}
+            {cityData.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Cidades com mais acessos</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {cityData.slice(0, 12).map(({ city, region, count }) => (
+                    <div key={`${city}-${region}`} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/50">
+                      <div className="truncate">
+                        <span className="font-medium">{city}</span>
+                        {region && <span className="text-xs text-muted-foreground ml-1">({region})</span>}
+                      </div>
+                      <Badge variant="outline" className="ml-1 flex-shrink-0">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {cityData.length === 0 && countryData.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {countryData.slice(0, 8).map(({ country, count }) => (
                   <div key={country} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/50">

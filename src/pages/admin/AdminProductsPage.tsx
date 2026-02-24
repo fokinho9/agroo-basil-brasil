@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,8 @@ import {
 import { useAdminProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types';
-import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ export default function AdminProductsPage() {
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<ProductFilter>('all');
+  const [fixingImages, setFixingImages] = useState(false);
   const [page, setPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -68,6 +70,22 @@ export default function AdminProductsPage() {
   // Reset page when filters change
   const handleSearch = (value: string) => { setSearch(value); setPage(1); };
   const handleFilter = (value: ProductFilter) => { setFilter(value); setPage(1); };
+
+  const handleFixBootImages = useCallback(async () => {
+    setFixingImages(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('import-texas-farm', {
+        body: { action: 'fix-images', categoryId: 'a0000001-0000-0000-0000-000000000004' },
+      });
+      if (error) throw error;
+      const successCount = data?.results?.filter((r: any) => r.status === 'success').length || 0;
+      toast.success(`Imagens corrigidas: ${successCount} produtos atualizados`);
+    } catch (err) {
+      toast.error('Erro ao corrigir imagens: ' + String(err));
+    } finally {
+      setFixingImages(false);
+    }
+  }, []);
 
   const resetForm = () => {
     setFormData({ name: '', description: '', price: '', original_price: '', image_url: '', images: [], category_id: '', stock: '', active: true, featured: false, variants: [] });
@@ -207,6 +225,16 @@ export default function AdminProductsPage() {
                 <Badge variant={filter === 'no-price' ? 'default' : 'outline'} className="cursor-pointer gap-1" onClick={() => handleFilter('no-price')}>
                   <DollarSign className="h-3 w-3" /> Sem Preço ({productsWithoutPrice.length})
                 </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 ml-auto"
+                  onClick={handleFixBootImages}
+                  disabled={fixingImages}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${fixingImages ? 'animate-spin' : ''}`} />
+                  {fixingImages ? 'Corrigindo Botas...' : 'Corrigir Imagens Botas'}
+                </Button>
               </div>
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

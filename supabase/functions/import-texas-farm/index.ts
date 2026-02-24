@@ -277,6 +277,76 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === 'fix-images') {
+      // Force re-scrape images for all products in a category
+      if (!firecrawlApiKey) {
+        return new Response(JSON.stringify({ error: 'FIRECRAWL_API_KEY not configured' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { categoryId } = await req.json().catch(() => ({ categoryId: 'a0000001-0000-0000-0000-000000000004' }));
+      const targetCategoryId = categoryId || 'a0000001-0000-0000-0000-000000000004';
+
+      const { data: productsToFix } = await supabase
+        .from('products')
+        .select('id, name, source_url, category_id')
+        .eq('category_id', targetCategoryId)
+        .eq('active', true)
+        .not('source_url', 'is', null)
+        .order('name');
+
+      if (!productsToFix || productsToFix.length === 0) {
+        return new Response(JSON.stringify({ error: 'No products found in category' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Fixing images for ${productsToFix.length} products`);
+      const results: any[] = [];
+
+      for (const product of productsToFix) {
+        if (!product.source_url) {
+          results.push({ id: product.id, name: product.name, status: 'no_url' });
+          continue;
+        }
+
+        console.log(`Scraping images for: ${product.name}`);
+        const markdown = await scrapeProduct(product.source_url, firecrawlApiKey);
+
+        if (!markdown) {
+          results.push({ id: product.id, name: product.name, status: 'scrape_failed' });
+          continue;
+        }
+
+        const images = extractImagesFromMarkdown(markdown);
+        if (images.length > 0) {
+          const { error } = await supabase
+            .from('products')
+            .update({
+              image_url: images[0],
+              images: images,
+            })
+            .eq('id', product.id);
+
+          if (error) {
+            results.push({ id: product.id, name: product.name, status: 'update_error', error: error.message });
+          } else {
+            results.push({ id: product.id, name: product.name, status: 'success', imagesFound: images.length });
+          }
+        } else {
+          results.push({ id: product.id, name: product.name, status: 'no_images_found' });
+        }
+
+        // Delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      return new Response(JSON.stringify({ success: true, results }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'scrape-details') {
       if (!firecrawlApiKey) {
         return new Response(JSON.stringify({ error: 'FIRECRAWL_API_KEY not configured' }), {

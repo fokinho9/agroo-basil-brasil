@@ -36,6 +36,7 @@ import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminHotjarPage from "@/pages/admin/AdminHotjarPage";
 import AdminPixelsPage from "@/pages/admin/AdminPixelsPage";
+import AdminSeoPage from "@/pages/admin/AdminSeoPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/fokinho/usuarios" element={<AdminUsersPage />} />
               <Route path="/fokinho/comportamento" element={<AdminHotjarPage />} />
               <Route path="/fokinho/pixels" element={<AdminPixelsPage />} />
+              <Route path="/fokinho/seo" element={<AdminSeoPage />} />
               
               
               {/* Keep old admin routes redirecting */}

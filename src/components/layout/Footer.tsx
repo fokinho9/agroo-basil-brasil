@@ -1,12 +1,27 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Youtube } from 'lucide-react';
+import { Facebook, Instagram, Youtube, MapPin, Phone, Mail } from 'lucide-react';
 import logoAgroBrasil from '@/assets/logo-agro-brasil.png';
+
+const quickLinks = [
+  { to: '/', label: 'Início' },
+  { to: '/produtos', label: 'Produtos' },
+  { to: '/sobre', label: 'Sobre Nós' },
+  { to: '/contato', label: 'Contato' },
+  { to: '/rastreio', label: 'Rastrear Pedido' },
+];
+
+const policyLinks = [
+  { to: '/termos', label: 'Termos de Uso' },
+  { to: '/privacidade', label: 'Política de Privacidade' },
+  { to: '/trocas', label: 'Trocas e Devoluções' },
+  { to: '/faq', label: 'Perguntas Frequentes' },
+];
 
 export function Footer() {
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About */}
           <div>
             <div className="mb-4">
@@ -16,18 +31,17 @@ export function Footer() {
                 className="h-14 w-auto brightness-0 invert"
               />
             </div>
-            <p className="text-primary-foreground/80 text-sm leading-relaxed">
-              Os melhores produtos agrícolas você encontra aqui. Qualidade e confiança 
-              para o seu negócio rural.
+            <p className="text-primary-foreground/80 text-sm leading-relaxed mb-4">
+              Os melhores produtos agropecuários você encontra aqui. Selaria, mantas, vestuário country e muito mais.
             </p>
-            <div className="flex gap-4 mt-4">
-              <a href="#" className="hover:text-secondary transition-colors">
+            <div className="flex gap-4">
+              <a href="#" aria-label="Facebook" className="hover:text-secondary transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="hover:text-secondary transition-colors">
+              <a href="#" aria-label="Instagram" className="hover:text-secondary transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="hover:text-secondary transition-colors">
+              <a href="#" aria-label="YouTube" className="hover:text-secondary transition-colors">
                 <Youtube className="h-5 w-5" />
               </a>
             </div>
@@ -37,56 +51,59 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-lg mb-4">Links Rápidos</h4>
             <ul className="space-y-2">
-              <li>
-                <Link to="/" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Início
-                </Link>
-              </li>
-              <li>
-                <Link to="/produtos" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Produtos
-                </Link>
-              </li>
-              <li>
-                <Link to="/sobre" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Sobre Nós
-                </Link>
-              </li>
+              {quickLinks.map((link) => (
+                <li key={link.to}>
+                  <Link to={link.to} className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Policies */}
           <div>
-            <h4 className="font-semibold text-lg mb-4">Políticas</h4>
+            <h4 className="font-semibold text-lg mb-4">Informações</h4>
             <ul className="space-y-2">
-              <li>
-                <Link to="/termos" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Termos de Uso
-                </Link>
+              {policyLinks.map((link) => (
+                <li key={link.to}>
+                  <Link to={link.to} className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h4 className="font-semibold text-lg mb-4">Contato</h4>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-2 text-sm text-primary-foreground/80">
+                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>Tangará da Serra - MT</span>
               </li>
-              <li>
-                <Link to="/privacidade" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Política de Privacidade
-                </Link>
+              <li className="flex items-center gap-2 text-sm text-primary-foreground/80">
+                <Phone className="h-4 w-4 flex-shrink-0" />
+                <span>(65) 99999-9999</span>
               </li>
-              <li>
-                <Link to="/trocas" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Trocas e Devoluções
-                </Link>
-              </li>
-              <li>
-                <Link to="/faq" className="text-primary-foreground/80 hover:text-secondary transition-colors text-sm">
-                  Perguntas Frequentes
-                </Link>
+              <li className="flex items-center gap-2 text-sm text-primary-foreground/80">
+                <Mail className="h-4 w-4 flex-shrink-0" />
+                <span>contato@agrobrasil.com.br</span>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center">
-          <p className="text-primary-foreground/60 text-sm">
-            © {new Date().getFullYear()} AgroShop. Todos os direitos reservados.
-          </p>
+        <div className="border-t border-primary-foreground/20 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-primary-foreground/60 text-sm">
+              © {new Date().getFullYear()} Agro Brasil. Todos os direitos reservados.
+            </p>
+            <p className="text-primary-foreground/40 text-xs">
+              CNPJ: 00.000.000/0001-00 | Tangará da Serra - MT
+            </p>
+          </div>
         </div>
       </div>
     </footer>

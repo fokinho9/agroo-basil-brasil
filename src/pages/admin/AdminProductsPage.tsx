@@ -13,12 +13,15 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command';
 import { useAdminProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types';
-import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ImageOff, FileText, DollarSign, ChevronLeft, ChevronRight, ChevronsUpDown, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +42,7 @@ export default function AdminProductsPage() {
   const [filter, setFilter] = useState<ProductFilter>('all');
   
   const [page, setPage] = useState(1);
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
@@ -158,21 +162,45 @@ export default function AdminProductsPage() {
                   </div>
                   <div>
                     <Label htmlFor="category">Categoria</Label>
-                    <Select value={formData.category_id} onValueChange={(value) => setFormData({ ...formData, category_id: value })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
-                      <SelectContent>
-                        {categories?.filter(c => !c.parent_id).map((parent) => (
-                          <div key={parent.id}>
-                            <SelectItem value={parent.id} className="font-semibold">{parent.name}</SelectItem>
-                            {categories?.filter(c => c.parent_id === parent.id).map((child) => (
-                              <SelectItem key={child.id} value={child.id} className="pl-6 text-muted-foreground">
-                                └ {child.name}
-                              </SelectItem>
+                    <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" aria-expanded={categoryOpen} className="w-full justify-between font-normal mt-1">
+                          {formData.category_id
+                            ? categories?.find(c => c.id === formData.category_id)?.name || 'Selecione...'
+                            : 'Selecione uma categoria'}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0 z-[200] bg-popover" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar categoria..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                            {categories?.filter(c => !c.parent_id).map((parent) => (
+                              <CommandGroup key={parent.id} heading={parent.name}>
+                                <CommandItem
+                                  value={parent.name}
+                                  onSelect={() => { setFormData({ ...formData, category_id: parent.id }); setCategoryOpen(false); }}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${formData.category_id === parent.id ? 'opacity-100' : 'opacity-0'}`} />
+                                  {parent.name}
+                                </CommandItem>
+                                {categories?.filter(c => c.parent_id === parent.id).map((child) => (
+                                  <CommandItem
+                                    key={child.id}
+                                    value={child.name}
+                                    onSelect={() => { setFormData({ ...formData, category_id: child.id }); setCategoryOpen(false); }}
+                                  >
+                                    <Check className={`mr-2 h-4 w-4 ${formData.category_id === child.id ? 'opacity-100' : 'opacity-0'}`} />
+                                    └ {child.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
                             ))}
-                          </div>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div>
                     <Label htmlFor="stock">Estoque</Label>

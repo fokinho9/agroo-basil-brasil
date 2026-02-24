@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -93,6 +95,52 @@ export default function AdminAnalyticsPage() {
   const { data: currentViews = [], isLoading } = usePageViewsByRange(start.toISOString(), end.toISOString());
   const { data: previousViews = [] } = usePageViewsByRange(prevStart.toISOString(), prevEnd.toISOString());
   const { data: onlineVisitors = [] } = useRealtimeVisitors();
+  const { data: products = [] } = useQuery({
+    queryKey: ['all-products-names'],
+    queryFn: async () => {
+      const { data } = await supabase.from('products').select('id, name').eq('active', true);
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Build a map of product slug/id to product name for display
+  const productNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of products) {
+      // Match paths like /produto/product-id or /produto/slug
+      map[p.id] = p.name;
+      if (p.name) {
+        const slug = p.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
+        map[slug] = p.name;
+      }
+    }
+    return map;
+  }, [products]);
+
+  const getPageLabel = (path: string): string => {
+    // Product pages: /produto/xxx
+    const productMatch = path.match(/^\/produto\/(.+)$/);
+    if (productMatch) {
+      const key = productMatch[1];
+      const name = productNameMap[key];
+      return name ? `🛒 ${name}` : path;
+    }
+    // Category pages
+    const catMatch = path.match(/^\/categoria\/(.+)$/);
+    if (catMatch) return `📁 ${catMatch[1].replace(/-/g, ' ')}`;
+    // Known pages
+    const labels: Record<string, string> = {
+      '/': '🏠 Página Inicial',
+      '/produtos': '🛍️ Todos os Produtos',
+      '/checkout': '💳 Checkout',
+      '/sobre': 'ℹ️ Sobre',
+      '/contato': '📞 Contato',
+      '/faq': '❓ FAQ',
+      '/rastreio': '📦 Rastreio',
+    };
+    return labels[path] || path;
+  };
 
   const current = useMemo(() => computeMetrics(currentViews), [currentViews]);
   const previous = useMemo(() => computeMetrics(previousViews), [previousViews]);
@@ -894,7 +942,7 @@ export default function AdminAnalyticsPage() {
                     <div key={path} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-5 tabular-nums">{i + 1}.</span>
-                        <span className="text-sm truncate max-w-[250px]">{path}</span>
+                        <span className="text-sm truncate max-w-[250px]" title={path}>{getPageLabel(path)}</span>
                       </div>
                       <Badge variant="outline">{count}</Badge>
                     </div>

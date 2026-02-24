@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageViewsByRange, useRealtimeVisitors, PageView } from '@/hooks/usePageViews';
@@ -12,7 +13,7 @@ import {
   TrendingUp, Activity, BarChart3,
   ArrowUpRight, ArrowDownRight, CalendarDays, MousePointerClick,
   FileText, Layers, Download, Link2, LogIn, LogOut, Clock,
-  Zap, MapPin,
+  Zap, MapPin, ChevronDown, ChevronRight, User, Route,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -336,6 +337,68 @@ export default function AdminAnalyticsPage() {
     const durScore = Math.min(current.avgDurationSec / 300, 1) * 30;
     return Math.round(ppsScore + bounceScore + durScore);
   }, [current]);
+
+  // *** Detailed session logs ***
+  const [sessionSearch, setSessionSearch] = useState('');
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [sessionPage, setSessionPage] = useState(1);
+  const SESSIONS_PER_PAGE = 20;
+
+  const detailedSessions = useMemo(() => {
+    const sessMap = new Map<string, PageView[]>();
+    for (const v of currentViews) {
+      const arr = sessMap.get(v.session_id) || [];
+      arr.push(v);
+      sessMap.set(v.session_id, arr);
+    }
+
+    const result = Array.from(sessMap.entries()).map(([sessionId, views]) => {
+      const sorted = [...views].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const firstView = sorted[0];
+      const lastView = sorted[sorted.length - 1];
+      const durationMs = new Date(lastView.created_at).getTime() - new Date(firstView.created_at).getTime();
+
+      // Calculate time per page
+      const pageTimings = sorted.map((v, i) => {
+        const nextTime = i < sorted.length - 1 ? new Date(sorted[i + 1].created_at).getTime() : new Date(v.created_at).getTime() + 30000;
+        const timeMs = nextTime - new Date(v.created_at).getTime();
+        return { path: v.path, timeMs, timestamp: v.created_at };
+      });
+
+      return {
+        sessionId,
+        pages: sorted.length,
+        startTime: firstView.created_at,
+        endTime: lastView.created_at,
+        durationMs,
+        device: firstView.device_type || 'desktop',
+        browser: firstView.browser || 'Desconhecido',
+        source: firstView.source_label,
+        utmSource: firstView.utm_source,
+        utmMedium: firstView.utm_medium,
+        utmCampaign: firstView.utm_campaign,
+        country: firstView.country || 'Brasil',
+        region: firstView.region || '',
+        city: firstView.city || '',
+        referrer: firstView.referrer,
+        journey: sorted.map(v => v.path),
+        pageTimings,
+      };
+    }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+    if (sessionSearch) {
+      const q = sessionSearch.toLowerCase();
+      return result.filter(s =>
+        s.sessionId.toLowerCase().includes(q) ||
+        s.source.toLowerCase().includes(q) ||
+        s.city.toLowerCase().includes(q) ||
+        s.browser.toLowerCase().includes(q) ||
+        s.journey.some(p => p.toLowerCase().includes(q)) ||
+        (s.utmCampaign && s.utmCampaign.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [currentViews, sessionSearch]);
 
   // Export CSV
   const handleExportCSV = () => {
@@ -978,26 +1041,32 @@ export default function AdminAnalyticsPage() {
           </Card>
         </div>
 
-        {/* Online Visitors */}
+        {/* Enhanced Online Visitors */}
         {onlineVisitors.length > 0 && (
           <Card className="border-primary/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary animate-pulse" />
-                Visitantes Online ({onlineVisitors.length})
+                Visitantes Online Agora ({onlineVisitors.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {onlineVisitors.slice(0, 15).map((v: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-sm py-1.5 border-b border-border/50 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-muted-foreground truncate max-w-[200px]">{v.path}</span>
+                {onlineVisitors.slice(0, 20).map((v: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-sm py-2 border-b border-border/50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium truncate block max-w-[200px]" title={v.path}>
+                          {getPageLabel(v.path)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(v.created_at), 'HH:mm:ss')} · {v.device_type}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="text-xs">{v.source_label}</Badge>
-                      <span className="text-xs text-muted-foreground">{v.device_type}</span>
                     </div>
                   </div>
                 ))}
@@ -1005,6 +1074,169 @@ export default function AdminAnalyticsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Detailed Session Logs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Sessões Detalhadas ({detailedSessions.length})
+            </CardTitle>
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                placeholder="Buscar por cidade, fonte, página, campanha..."
+                value={sessionSearch}
+                onChange={(e) => { setSessionSearch(e.target.value); setSessionPage(1); }}
+                className="max-w-sm text-sm"
+              />
+              <Badge variant="secondary">{detailedSessions.length} sessões</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {detailedSessions.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">Nenhuma sessão no período</p>
+            ) : (
+              <div className="space-y-1">
+                {detailedSessions.slice((sessionPage - 1) * SESSIONS_PER_PAGE, sessionPage * SESSIONS_PER_PAGE).map((session) => (
+                  <div key={session.sessionId} className="border rounded-lg overflow-hidden">
+                    {/* Session header */}
+                    <button
+                      onClick={() => setExpandedSession(expandedSession === session.sessionId ? null : session.sessionId)}
+                      className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">
+                              {format(new Date(session.startTime), 'dd/MM HH:mm', { locale: ptBR })}
+                            </span>
+                            <Badge variant="outline" className="text-xs">{session.source}</Badge>
+                            {session.utmCampaign && (
+                              <Badge variant="secondary" className="text-xs">{session.utmCampaign}</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span>{session.device === 'mobile' ? '📱' : '💻'} {session.browser}</span>
+                            {session.city && <span>· 📍 {session.city}{session.region ? `, ${session.region}` : ''}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-sm font-medium">{session.pages} pág.</p>
+                          <p className="text-xs text-muted-foreground">{formatDuration(session.durationMs / 1000)}</p>
+                        </div>
+                        {expandedSession === session.sessionId ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Expanded details */}
+                    {expandedSession === session.sessionId && (
+                      <div className="border-t bg-muted/30 p-4 space-y-3">
+                        {/* Session info */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                          <div className="p-2 rounded bg-background border">
+                            <p className="text-muted-foreground">Dispositivo</p>
+                            <p className="font-medium">{session.device === 'mobile' ? '📱 Mobile' : '💻 Desktop'}</p>
+                          </div>
+                          <div className="p-2 rounded bg-background border">
+                            <p className="text-muted-foreground">Navegador</p>
+                            <p className="font-medium">{session.browser}</p>
+                          </div>
+                          <div className="p-2 rounded bg-background border">
+                            <p className="text-muted-foreground">Localização</p>
+                            <p className="font-medium">{session.city || session.country}{session.region ? `, ${session.region}` : ''}</p>
+                          </div>
+                          <div className="p-2 rounded bg-background border">
+                            <p className="text-muted-foreground">Origem</p>
+                            <p className="font-medium">{session.source}</p>
+                          </div>
+                        </div>
+
+                        {session.utmSource && (
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="outline">source: {session.utmSource}</Badge>
+                            {session.utmMedium && <Badge variant="outline">medium: {session.utmMedium}</Badge>}
+                            {session.utmCampaign && <Badge variant="outline">campaign: {session.utmCampaign}</Badge>}
+                          </div>
+                        )}
+
+                        {session.referrer && (
+                          <p className="text-xs text-muted-foreground">
+                            Referrer: <span className="font-medium">{session.referrer}</span>
+                          </p>
+                        )}
+
+                        {/* Page journey with time per page */}
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                            <Route className="h-3 w-3" /> Jornada do Usuário
+                          </p>
+                          <div className="space-y-1">
+                            {session.pageTimings.map((pt, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-background border">
+                                <span className="text-muted-foreground w-5 tabular-nums">{idx + 1}.</span>
+                                <span className="flex-1 truncate font-medium" title={pt.path}>
+                                  {getPageLabel(pt.path)}
+                                </span>
+                                <span className="text-muted-foreground tabular-nums shrink-0">
+                                  {format(new Date(pt.timestamp), 'HH:mm:ss')}
+                                </span>
+                                <Badge variant="secondary" className="text-xs tabular-nums shrink-0">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {formatDuration(pt.timeMs / 1000)}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                          Session ID: <code className="bg-muted px-1 rounded">{session.sessionId.slice(0, 12)}...</code>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Pagination */}
+                {detailedSessions.length > SESSIONS_PER_PAGE && (
+                  <div className="flex items-center justify-between pt-4">
+                    <p className="text-xs text-muted-foreground">
+                      Mostrando {(sessionPage - 1) * SESSIONS_PER_PAGE + 1}-{Math.min(sessionPage * SESSIONS_PER_PAGE, detailedSessions.length)} de {detailedSessions.length}
+                    </p>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={sessionPage === 1}
+                        onClick={() => setSessionPage(p => p - 1)}
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={sessionPage * SESSIONS_PER_PAGE >= detailedSessions.length}
+                        onClick={() => setSessionPage(p => p + 1)}
+                      >
+                        Próximo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
     </AdminLayout>
   );

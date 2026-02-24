@@ -161,8 +161,15 @@ export default function AdminProductsPage() {
                     <Select value={formData.category_id} onValueChange={(value) => setFormData({ ...formData, category_id: value })}>
                       <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
                       <SelectContent>
-                        {categories?.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                        {categories?.filter(c => !c.parent_id).map((parent) => (
+                          <div key={parent.id}>
+                            <SelectItem value={parent.id} className="font-semibold">{parent.name}</SelectItem>
+                            {categories?.filter(c => c.parent_id === parent.id).map((child) => (
+                              <SelectItem key={child.id} value={child.id} className="pl-6 text-muted-foreground">
+                                └ {child.name}
+                              </SelectItem>
+                            ))}
+                          </div>
                         ))}
                       </SelectContent>
                     </Select>

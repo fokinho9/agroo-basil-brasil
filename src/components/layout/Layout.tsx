@@ -46,9 +46,9 @@ export function Layout({ children }: LayoutProps) {
         onClose={() => setShowNotification(false)}
       />
       
-      {!isOpen && <MiniFloatingCart />}
-      <FloatingCart />
-      <WhatsAppButton />
+      {!isCheckout && !isOpen && <MiniFloatingCart />}
+      {!isCheckout && <FloatingCart />}
+      {!isCheckout && <WhatsAppButton />}
       
       {/* Marketing */}
       {!isCheckout && <PopupBanner />}

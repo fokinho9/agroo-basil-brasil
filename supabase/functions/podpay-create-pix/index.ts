@@ -1,6 +1,7 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Random course names for product masking
@@ -23,8 +24,14 @@ const courseNames = [
 ];
 
 // Random names for customer masking
-const firstNames = ['João', 'Maria', 'Pedro', 'Ana', 'Carlos', 'Juliana', 'Rafael', 'Fernanda', 'Lucas', 'Camila', 'Bruno', 'Patricia', 'Diego', 'Larissa', 'Thiago'];
-const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Almeida', 'Nascimento', 'Lima', 'Araújo', 'Pereira', 'Costa', 'Carvalho', 'Gomes', 'Martins'];
+const firstNames = [
+  'João', 'Maria', 'Pedro', 'Ana', 'Carlos', 'Juliana', 'Rafael', 'Fernanda',
+  'Lucas', 'Camila', 'Bruno', 'Patricia', 'Diego', 'Larissa', 'Thiago'
+];
+const lastNames = [
+  'Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Almeida',
+  'Nascimento', 'Lima', 'Araújo', 'Pereira', 'Costa', 'Carvalho', 'Gomes', 'Martins'
+];
 
 function randomItem<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -32,17 +39,20 @@ function randomItem<T>(arr: T[]): T {
 
 function randomCPF(): string {
   const digits = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+
   // Calculate check digits
   let sum = 0;
   for (let i = 0; i < 9; i++) sum += digits[i] * (10 - i);
   let r = (sum * 10) % 11;
   if (r >= 10) r = 0;
   digits.push(r);
+
   sum = 0;
   for (let i = 0; i < 10; i++) sum += digits[i] * (11 - i);
   r = (sum * 10) % 11;
   if (r >= 10) r = 0;
   digits.push(r);
+
   return digits.join('');
 }
 
@@ -54,8 +64,48 @@ function randomPhone(): string {
 
 function randomEmail(name: string): string {
   const domains = ['gmail.com', 'outlook.com', 'yahoo.com.br', 'hotmail.com'];
-  const clean = name.toLowerCase().replace(/\s+/g, '.').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const clean = name
+    .toLowerCase()
+    .replace(/\s+/g, '.')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
   return `${clean}${Math.floor(Math.random() * 999)}@${randomItem(domains)}`;
+}
+
+// ✅ Pega o "copia e cola" (BR Code / EMV) mesmo se a API mudar o nome do campo
+function pickPixCode(pix: any): string {
+  if (!pix) return '';
+
+  return (
+    pix.copy_paste ||
+    pix.copyPaste ||
+    pix.emv ||
+    pix.payload ||
+    pix.brcode ||
+    pix.code ||
+    pix.qr_code || // deixa por último; às vezes não é o copia e cola
+    pix.qrCode ||
+    ''
+  );
+}
+
+// ✅ Pega imagem/URL do QR Code com fallback
+function pickPixQrImage(pix: any): string {
+  if (!pix) return '';
+
+  return (
+    pix.qr_code_image ||
+    pix.qrCodeImage ||
+    pix.qr_code_url ||
+    pix.qrCodeUrl ||
+    pix.qr_image_url ||
+    pix.qrImageUrl ||
+    ''
+  );
+}
+
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 Deno.serve(async (req) => {
@@ -83,7 +133,7 @@ Deno.serve(async (req) => {
     const courseName = randomItem(courseNames);
 
     // Amount is already in BRL, convert to centavos
-    const amountCentavos = Math.round(amount * 100);
+    const amountCentavos = Math.round(Number(amount) * 100);
 
     const body = {
       amount: amountCentavos,
@@ -107,9 +157,14 @@ Deno.serve(async (req) => {
       },
     };
 
-    console.log('Creating PodPay PIX transaction:', { amountCentavos, orderId, courseName, customerName: fullName });
+    console.log('Creating PodPay PIX transaction:', {
+      amountCentavos,
+      orderId,
+      courseName,
+      customerName: fullName,
+    });
 
-    const response = await fetch('https://api.podpay.app/v1/transactions', {
+    const createRes = await fetch('https://api.podpay.app/v1/transactions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -118,22 +173,50 @@ Deno.serve(async (req) => {
       body: JSON.stringify(body),
     });
 
-    const result = await response.json();
-    console.log('PodPay response status:', response.status);
-    console.log('PodPay response:', JSON.stringify(result));
+    const createJson = await createRes.json();
+    console.log('PodPay response status:', createRes.status);
+    console.log('PodPay response:', JSON.stringify(createJson));
 
-    if (!response.ok || !result.success) {
-      throw new Error(result.error?.message || `PodPay API error: ${response.status}`);
+    if (!createRes.ok || !createJson.success) {
+      throw new Error(createJson.error?.message || `PodPay API error: ${createRes.status}`);
     }
 
-    const txData = result.data;
+    // ⚠️ txData mutável porque vamos tentar buscar depois se vier pix vazio
+    let txData = createJson.data;
+
+    let pixCode = pickPixCode(txData.pix);
+    let pixQr = pickPixQrImage(txData.pix);
+
+    // 🔥 PodPay pode demorar para anexar o pix no retorno do POST
+    if (!pixCode || !pixQr) {
+      for (let i = 0; i < 4; i++) {
+        await sleep(900);
+
+        const getRes = await fetch(`https://api.podpay.app/v1/transactions/${txData.id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${secretKey}`,
+          },
+        });
+
+        const getJson = await getRes.json();
+
+        if (getRes.ok && getJson?.success && getJson?.data) {
+          txData = getJson.data;
+          pixCode = pixCode || pickPixCode(txData.pix);
+          pixQr = pixQr || pickPixQrImage(txData.pix);
+        }
+
+        if (pixCode && pixQr) break;
+      }
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         transaction_id: txData.id,
-        pix_code: txData.pix?.qr_code || txData.pix?.copy_paste || '',
-        pix_qr_code_image: txData.pix?.qr_code_image || txData.pix?.qr_code_url || '',
+        pix_code: pixCode,                // ✅ copia e cola
+        pix_qr_code_image: pixQr,         // ✅ imagem/URL QR
         status: txData.status,
       }),
       {

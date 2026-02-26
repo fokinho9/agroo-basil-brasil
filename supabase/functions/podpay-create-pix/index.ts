@@ -137,23 +137,23 @@ Deno.serve(async (req) => {
 
     const body = {
       amount: amountCentavos,
-      payment_method: 'pix',
+      paymentMethod: 'pix',
       customer: {
         name: fullName,
         email: email,
         document: cpf,
-        phone: phone,
+        phone: `+55${phone}`,
       },
       items: [
         {
           title: courseName,
           quantity: 1,
-          unit_price: amountCentavos,
+          unitPrice: amountCentavos,
           tangible: false,
         },
       ],
       metadata: {
-        order_id: orderId,
+        orderId: orderId,
       },
     };
 
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
     console.log('PodPay response:', JSON.stringify(createJson));
 
     if (!createRes.ok || !createJson.success) {
-      throw new Error(createJson.error?.message || `PodPay API error: ${createRes.status}`);
+      throw new Error(createJson.error?.message || createJson.message || `PodPay API error: ${createRes.status}`);
     }
 
     // ⚠️ txData mutável porque vamos tentar buscar depois se vier pix vazio

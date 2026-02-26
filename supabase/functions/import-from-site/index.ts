@@ -361,7 +361,7 @@ async function findOrCreateCategory(
     const { data } = await supabase.from('categories').select('id').ilike('name', trimmed).limit(1);
     if (data?.length) { parentId = data[0].id as string; lastId = parentId; cache.set(key, parentId); continue; }
 
-    const { data: created, error } = await supabase.from('categories')
+    const { data: created, error }: { data: any; error: any } = await supabase.from('categories')
       .insert({ name: trimmed, slug: slugify(trimmed), parent_id: parentId }).select('id').single();
     if (error) { console.error(`Error creating category "${trimmed}":`, error.message); break; }
     parentId = created.id; lastId = created.id; cache.set(key, created.id);

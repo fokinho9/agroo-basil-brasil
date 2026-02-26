@@ -39,8 +39,9 @@ function randomItem<T>(arr: T[]): T {
 
 function randomCPF(): string {
   const digits = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  // Avoid all-same digits
+  if (digits.every(d => d === digits[0])) digits[8] = (digits[0] + 1) % 10;
 
-  // Calculate check digits
   let sum = 0;
   for (let i = 0; i < 9; i++) sum += digits[i] * (10 - i);
   let r = (sum * 10) % 11;
@@ -53,13 +54,18 @@ function randomCPF(): string {
   if (r >= 10) r = 0;
   digits.push(r);
 
-  return digits.join('');
+  // Format as XXX.XXX.XXX-XX
+  const s = digits.join('');
+  return `${s.slice(0,3)}.${s.slice(3,6)}.${s.slice(6,9)}-${s.slice(9)}`;
 }
 
 function randomPhone(): string {
-  const ddd = String(11 + Math.floor(Math.random() * 80)).padStart(2, '0');
-  const num = String(Math.floor(Math.random() * 900000000) + 100000000);
-  return `${ddd}${num}`;
+  // Valid Brazilian DDDs
+  const ddds = ['11','21','31','41','51','61','71','81','91','27','47','48','43','44','62','65','67','79','82','83','84','85','86','87','88','92','96','98','99'];
+  const ddd = randomItem(ddds);
+  // Mobile numbers start with 9
+  const num = '9' + String(Math.floor(Math.random() * 90000000) + 10000000);
+  return `+55${ddd}${num}`;
 }
 
 function randomEmail(name: string): string {

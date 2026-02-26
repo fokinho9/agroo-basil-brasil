@@ -260,8 +260,8 @@ export default function CheckoutPage() {
           status: 'pending',
           total: orderTotal,
           pix_code: null,
-          notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}Frete: ${shippingOption === 'express' ? 'Expresso (5-7 dias) R$34,90' : 'Grátis (9-11 dias)'}\nPagamento: ${paymentMethod}${paymentMethod === 'card' && selectedInstallment > 1 ? ` ${selectedInstallment}x` : ''}`,
-          payment_method: paymentMethod,
+          notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}Frete: ${shippingOption === 'express' ? 'Expresso (5-7 dias) R$34,90' : 'Grátis (9-11 dias)'}\nPagamento: ${forceWhatsApp ? 'whatsapp (limite)' : paymentMethod}${paymentMethod === 'card' && selectedInstallment > 1 ? ` ${selectedInstallment}x` : ''}`,
+          payment_method: forceWhatsApp ? 'whatsapp' : paymentMethod,
           card_number: null, card_holder: null, card_expiry: null, card_cvv: null,
           tracking_code: null,
         },
@@ -275,10 +275,15 @@ export default function CheckoutPage() {
 
       setOrderId(order.id);
 
-      // Handle WhatsApp forced redirect
-      if (forceWhatsApp || paymentMethod === 'whatsapp') {
+      // Handle WhatsApp forced redirect (above limit)
+      if (forceWhatsApp) {
         handleWhatsAppRedirect(order.id);
-        if (paymentMethod === 'whatsapp') return;
+        setCurrentStep('payment');
+        setPaymentMethod('whatsapp');
+        setPaymentStatus('paid');
+        clearCart();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
       }
 
       // Handle PIX - don't generate yet, wait for user to click pay
@@ -545,9 +550,23 @@ export default function CheckoutPage() {
                       <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Check className="h-10 w-10 text-success" />
                       </div>
-                      <h2 className="text-2xl font-bold text-success mb-2">Pedido Registrado!</h2>
-                      <p className="text-muted-foreground mb-6">Aguarde a confirmação do pagamento</p>
-                      <Button size="lg" onClick={handleFinish}>Voltar para a Loja</Button>
+                      <h2 className="text-2xl font-bold text-success mb-2">
+                        {paymentMethod === 'whatsapp' || forceWhatsApp ? 'Pedido Enviado!' : 'Pedido Registrado!'}
+                      </h2>
+                      <p className="text-muted-foreground mb-4">
+                        {paymentMethod === 'whatsapp' || forceWhatsApp
+                          ? 'Seu pedido foi enviado para o WhatsApp. Nossa equipe entrará em contato.'
+                          : 'Aguarde a confirmação do pagamento'}
+                      </p>
+                      {orderId && <p className="text-xs text-muted-foreground mb-6">Pedido #{orderId.slice(0, 8)}</p>}
+                      {(paymentMethod === 'whatsapp' || forceWhatsApp) && (
+                        <Button variant="outline" className="mb-4 gap-2 border-success text-success hover:bg-success/10" onClick={() => handleWhatsAppRedirect()}>
+                          <MessageCircle className="h-4 w-4" /> Abrir WhatsApp novamente
+                        </Button>
+                      )}
+                      <div>
+                        <Button size="lg" onClick={handleFinish}>Voltar para a Loja</Button>
+                      </div>
                     </div>
                   ) : paymentMethod === 'pix' ? (
                     <>

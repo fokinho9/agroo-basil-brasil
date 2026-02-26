@@ -281,14 +281,10 @@ export default function CheckoutPage() {
         if (paymentMethod === 'whatsapp') return;
       }
 
-      // Handle PIX via PodPay
-      if (paymentMethod === 'pix') {
-        if (paymentGateway === 'podpay') {
-          await createPodPayPix(order.id, orderTotal);
-        } else {
-          const pixKey = settings?.pix_key || storePhone;
-          setPixCode(pixKey);
-        }
+      // Handle PIX - don't generate yet, wait for user to click pay
+      if (paymentMethod === 'pix' && paymentGateway === 'manual') {
+        const pixKey = settings?.pix_key || storePhone;
+        setPixCode(pixKey);
       }
 
       setCurrentStep('payment');
@@ -567,30 +563,41 @@ export default function CheckoutPage() {
                         </div>
                       </div>
 
-                      {isCreatingPix ? (
+                      {/* If PIX not yet generated, show button to generate */}
+                      {!pixCode && !isCreatingPix && (
+                        <Button className="w-full" size="lg" onClick={() => {
+                          if (paymentGateway === 'podpay' && orderId) {
+                            createPodPayPix(orderId, pixTotal);
+                          }
+                        }}>
+                          <Banknote className="h-4 w-4 mr-2" /> Gerar PIX para Pagamento
+                        </Button>
+                      )}
+
+                      {isCreatingPix && (
                         <div className="flex items-center justify-center py-8 gap-3">
                           <Loader2 className="h-6 w-6 animate-spin text-primary" />
                           <span className="text-muted-foreground">Gerando PIX...</span>
                         </div>
-                      ) : (
+                      )}
+
+                      {pixCode && !isCreatingPix && (
                         <>
                           {pixQrImage && (
                             <div className="flex justify-center">
                               <img src={pixQrImage} alt="QR Code PIX" className="w-48 h-48 rounded-lg border border-border" />
                             </div>
                           )}
-                          {pixCode && (
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">{paymentGateway === 'podpay' ? 'Código PIX Copia e Cola' : 'Chave PIX'}</Label>
-                              <div className="flex gap-2">
-                                <Input value={pixCode} readOnly className="font-mono text-xs" />
-                                <Button variant="outline" onClick={handleCopyPix} className="gap-2 shrink-0">
-                                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                  {copied ? 'Copiado!' : 'Copiar'}
-                                </Button>
-                              </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">{paymentGateway === 'podpay' ? 'Código PIX Copia e Cola' : 'Chave PIX'}</Label>
+                            <div className="flex gap-2">
+                              <Input value={pixCode} readOnly className="font-mono text-xs" />
+                              <Button variant="outline" onClick={handleCopyPix} className="gap-2 shrink-0">
+                                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                {copied ? 'Copiado!' : 'Copiar'}
+                              </Button>
                             </div>
-                          )}
+                          </div>
 
                           {/* Proof upload */}
                           {copied && !proofUploaded && (
@@ -891,12 +898,6 @@ export default function CheckoutPage() {
                 </Button>
               )}
 
-              {forceWhatsApp && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-warning/10 border border-warning/20 rounded-lg p-3">
-                  <MessageCircle className="h-4 w-4 text-warning shrink-0" />
-                  Pedidos acima de {formatCurrency(whatsappLimit)} são finalizados via WhatsApp
-                </div>
-              )}
 
               <TrustBadges />
             </div>

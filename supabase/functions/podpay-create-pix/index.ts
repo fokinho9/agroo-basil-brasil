@@ -142,27 +142,18 @@ Deno.serve(async (req) => {
         name: fullName,
         email: email,
         document: cpf,
-        phone: `+55${phone}`,
+        phone: phone,
       },
       items: [
         {
           title: courseName,
           quantity: 1,
           unitPrice: amountCentavos,
-          tangible: false,
         },
       ],
-      metadata: {
-        orderId: orderId,
-      },
     };
 
-    console.log('Creating PodPay PIX transaction:', {
-      amountCentavos,
-      orderId,
-      courseName,
-      customerName: fullName,
-    });
+    console.log('Creating PodPay PIX transaction, full body:', JSON.stringify(body));
 
     const createRes = await fetch('https://api.podpay.app/v1/transactions', {
       method: 'POST',

@@ -1,7 +1,7 @@
 import { Seo } from '@/components/seo/Seo';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote, MessageCircle, Upload, Lock, Star, BadgeCheck, Clock } from 'lucide-react';
+import { CreditCard, Copy, Check, ShoppingBag, ArrowLeft, Truck, Shield, Package, User, Loader2, Banknote, MessageCircle, Lock, Star, BadgeCheck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,9 +105,8 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
   const [abandonedCartSaved, setAbandonedCartSaved] = useState(false);
-  const [isUploadingProof, setIsUploadingProof] = useState(false);
-  const [proofUploaded, setProofUploaded] = useState(false);
   const [isCreatingPix, setIsCreatingPix] = useState(false);
+  const [isPollingStatus, setIsPollingStatus] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState(1);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', cpf: '',
@@ -159,6 +158,39 @@ export default function CheckoutPage() {
     return () => window.removeEventListener('beforeunload', save);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, formData, currentStep, abandonedCartSaved, finalTotal]);
+
+  // Poll PodPay transaction status every 2 seconds
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startPolling = useCallback((txId: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    setIsPollingStatus(true);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('podpay-check-status', {
+          body: { transaction_id: txId },
+        });
+        if (error) return;
+        if (data?.paid) {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setIsPollingStatus(false);
+          setPaymentStatus('paid');
+          if (orderId) {
+            await updateOrder.mutateAsync({ id: orderId, status: 'processing' });
+          }
+          clearCart();
+          toast.success('Pagamento PIX confirmado!');
+        }
+      } catch { /* silently retry */ }
+    }, 2000);
+  }, [orderId, clearCart, updateOrder]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const fetchAddressFromCEP = async (cep: string) => {
     const clean = cep.replace(/\D/g, '');
@@ -313,6 +345,11 @@ export default function CheckoutPage() {
       setPixQrImage(data.pix_qr_code_image || '');
       setTransactionId(data.transaction_id);
 
+      // Start polling for payment confirmation
+      if (data.transaction_id) {
+        startPolling(data.transaction_id);
+      }
+
       // Save transaction ID to order
       await updateOrder.mutateAsync({
         id: oId,
@@ -386,21 +423,12 @@ export default function CheckoutPage() {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !orderId) return;
-    setIsUploadingProof(true);
-    try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const filePath = `proofs/${orderId}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('product-images').upload(filePath, file, { contentType: file.type, upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: publicUrlData } = supabase.storage.from('product-images').getPublicUrl(filePath);
-      await updateOrder.mutateAsync({ id: orderId, notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}Comprovante PIX: ${publicUrlData.publicUrl}` });
-      setProofUploaded(true);
-      toast.success('Comprovante enviado! Seu pedido será processado mais rapidamente.');
-    } catch { toast.error('Erro ao enviar comprovante.'); }
-    finally { setIsUploadingProof(false); }
+  const handleSendReceiptWhatsApp = () => {
+    const message = `*📎 COMPROVANTE - Pedido #${(orderId || '').slice(0, 8)}*\n\n` +
+      `*👤 Cliente:* ${formData.name}\n` +
+      `*💰 Valor:* ${formatCurrency(pixTotal)}\n\n` +
+      `Segue o comprovante de pagamento PIX.`;
+    window.open(`https://wa.me/${storePhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleFinish = () => { clearCart(); toast.success('Obrigado pela compra!'); navigate('/'); };
@@ -568,7 +596,7 @@ export default function CheckoutPage() {
                         <Button size="lg" onClick={handleFinish}>Voltar para a Loja</Button>
                       </div>
                     </div>
-                  ) : paymentMethod === 'pix' ? (
+                    ) : paymentMethod === 'pix' ? (
                     <>
                       <div className="text-center">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -582,12 +610,10 @@ export default function CheckoutPage() {
                         </div>
                       </div>
 
-                      {/* If PIX not yet generated, show button to generate */}
-                      {!pixCode && !isCreatingPix && (
+                      {/* PodPay: show generate button if not yet generated */}
+                      {paymentGateway === 'podpay' && !pixCode && !isCreatingPix && (
                         <Button className="w-full" size="lg" onClick={() => {
-                          if (paymentGateway === 'podpay' && orderId) {
-                            createPodPayPix(orderId, pixTotal);
-                          }
+                          if (orderId) createPodPayPix(orderId, pixTotal);
                         }}>
                           <Banknote className="h-4 w-4 mr-2" /> Gerar PIX para Pagamento
                         </Button>
@@ -600,6 +626,7 @@ export default function CheckoutPage() {
                         </div>
                       )}
 
+                      {/* Show PIX code (manual = immediate, podpay = after generation) */}
                       {pixCode && !isCreatingPix && (
                         <>
                           {pixQrImage && (
@@ -618,26 +645,30 @@ export default function CheckoutPage() {
                             </div>
                           </div>
 
-                          {/* Proof upload */}
-                          {copied && !proofUploaded && (
-                            <div className="bg-muted/50 rounded-xl p-4 space-y-3 border border-border/30">
-                              <p className="text-sm font-medium">📎 Enviar comprovante (opcional)</p>
-                              <p className="text-xs text-muted-foreground">Envie o comprovante para agilizar a confirmação.</p>
-                              <input type="file" accept="image/*,.pdf" className="hidden" id="proof-upload" onChange={handleProofUpload} />
-                              <Button variant="outline" className="w-full gap-2" onClick={() => document.getElementById('proof-upload')?.click()} disabled={isUploadingProof}>
-                                {isUploadingProof ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <><Upload className="h-4 w-4" /> Enviar Comprovante</>}
-                              </Button>
-                            </div>
-                          )}
-                          {proofUploaded && (
-                            <div className="flex items-center gap-2 text-success text-sm bg-success/10 rounded-lg p-3">
-                              <Check className="h-4 w-4" /> Comprovante enviado!
+                          {/* PodPay: auto-polling indicator */}
+                          {paymentGateway === 'podpay' && isPollingStatus && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 border border-border/30">
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                              Verificando pagamento automaticamente...
                             </div>
                           )}
 
-                          <Button className="w-full" size="lg" onClick={() => { setPaymentStatus('paid'); clearCart(); toast.success('Pedido registrado!'); }}>
-                            Já fiz o pagamento
+                          {/* Send receipt via WhatsApp */}
+                          <Button variant="outline" className="w-full gap-2 border-success text-success hover:bg-success/10" onClick={handleSendReceiptWhatsApp}>
+                            <MessageCircle className="h-4 w-4" /> Enviar Comprovante via WhatsApp
                           </Button>
+
+                          {/* Manual PIX: "Já fiz o pagamento" → WhatsApp */}
+                          {paymentGateway === 'manual' && (
+                            <Button className="w-full" size="lg" onClick={() => {
+                              handleSendReceiptWhatsApp();
+                              setPaymentStatus('paid');
+                              clearCart();
+                              toast.success('Pedido registrado! Envie o comprovante pelo WhatsApp.');
+                            }}>
+                              <Check className="h-4 w-4 mr-2" /> Já fiz o pagamento
+                            </Button>
+                          )}
                         </>
                       )}
                     </>

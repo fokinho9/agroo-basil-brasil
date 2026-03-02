@@ -21,6 +21,7 @@ import PrivacyPage from "@/pages/PrivacyPage";
 import ReturnsPage from "@/pages/ReturnsPage";
 import FAQPage from "@/pages/FAQPage";
 import TrackingPage from "@/pages/TrackingPage";
+import JadlogTrackingPage from "@/pages/JadlogTrackingPage";
 import NotFound from "@/pages/NotFound";
 
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/trocas" element={<Layout><ReturnsPage /></Layout>} />
               <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
               <Route path="/rastreio" element={<Layout><TrackingPage /></Layout>} />
+              <Route path="/rastreio/jadlog" element={<JadlogTrackingPage />} />
               
               {/* Admin routes - hidden from public */}
               <Route path="/fokinho" element={<AdminLoginPage />} />

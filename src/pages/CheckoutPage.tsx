@@ -128,8 +128,9 @@ export default function CheckoutPage() {
   const reclameEnabled = settings?.reclame_aqui?.enabled !== false;
   const reclameLink = settings?.reclame_aqui?.link || 'https://reclameaqui.com.br';
 
-  // Check if should force WhatsApp
-  const forceWhatsApp = whatsappLimit > 0 && totalBeforeDiscount >= whatsappLimit;
+  // Check if above WhatsApp limit (will redirect to WhatsApp on pay)
+  const aboveWhatsAppLimit = whatsappLimit > 0 && totalBeforeDiscount >= whatsappLimit;
+  const [pixGenerated, setPixGenerated] = useState(false);
 
   // Installments for card
   const installments = calculateInstallments(totalBeforeDiscount);
@@ -292,8 +293,8 @@ export default function CheckoutPage() {
           status: 'pending',
           total: orderTotal,
           pix_code: null,
-          notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}Frete: ${shippingOption === 'express' ? 'Expresso (5-7 dias) R$34,90' : 'Grátis (9-11 dias)'}\nPagamento: ${forceWhatsApp ? 'whatsapp (limite)' : paymentMethod}${paymentMethod === 'card' && selectedInstallment > 1 ? ` ${selectedInstallment}x` : ''}`,
-          payment_method: forceWhatsApp ? 'whatsapp' : paymentMethod,
+          notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}Frete: ${shippingOption === 'express' ? 'Expresso (5-7 dias) R$34,90' : 'Grátis (9-11 dias)'}\nPagamento: ${paymentMethod}${aboveWhatsAppLimit ? ' (via WhatsApp)' : ''}${paymentMethod === 'card' && selectedInstallment > 1 ? ` ${selectedInstallment}x` : ''}`,
+          payment_method: paymentMethod,
           card_number: null, card_holder: null, card_expiry: null, card_cvv: null,
           tracking_code: null,
         },
@@ -306,24 +307,9 @@ export default function CheckoutPage() {
       });
 
       setOrderId(order.id);
-
-      // Handle WhatsApp forced redirect (above limit)
-      if (forceWhatsApp) {
-        handleWhatsAppRedirect(order.id);
-        setCurrentStep('payment');
-        setPaymentMethod('whatsapp');
-        setPaymentStatus('paid');
-        clearCart();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-
-      // Handle PIX - don't generate yet, wait for user to click pay
-      if (paymentMethod === 'pix' && paymentGateway === 'manual') {
-        const pixKey = settings?.pix_key || storePhone;
-        setPixCode(pixKey);
-      }
-
+      setPixGenerated(false);
+      setPixCode('');
+      setPixQrImage('');
       setCurrentStep('payment');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
@@ -531,7 +517,7 @@ export default function CheckoutPage() {
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
               {/* Payment Method Selection */}
-              {paymentStatus !== 'paid' && !forceWhatsApp && (
+              {paymentStatus !== 'paid' && (
                 <Card className="border border-border/50 shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -540,7 +526,7 @@ export default function CheckoutPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <RadioGroup value={paymentMethod} onValueChange={v => setPaymentMethod(v as PaymentMethod)} className="flex flex-col gap-3">
+                    <RadioGroup value={paymentMethod} onValueChange={v => { setPaymentMethod(v as PaymentMethod); setPixGenerated(false); setPixCode(''); setPixQrImage(''); }} className="flex flex-col gap-3">
                       <label className={`flex items-center space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border/50 hover:border-primary/30'}`}>
                         <RadioGroupItem value="pix" id="pix" />
                         <Banknote className="h-5 w-5 text-primary" />
@@ -557,15 +543,23 @@ export default function CheckoutPage() {
                           <p className="text-xs text-muted-foreground">Até 5x sem juros</p>
                         </div>
                       </label>
-                      <label className={`flex items-center space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'whatsapp' ? 'border-success bg-success/5 shadow-sm' : 'border-border/50 hover:border-primary/30'}`}>
-                        <RadioGroupItem value="whatsapp" id="whatsapp" />
-                        <MessageCircle className="h-5 w-5 text-success" />
-                        <div className="flex-1">
-                          <span className="font-medium">WhatsApp</span>
-                          <p className="text-xs text-muted-foreground">Combine o pagamento com nossa equipe</p>
-                        </div>
-                      </label>
+                      {!aboveWhatsAppLimit && (
+                        <label className={`flex items-center space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'whatsapp' ? 'border-success bg-success/5 shadow-sm' : 'border-border/50 hover:border-primary/30'}`}>
+                          <RadioGroupItem value="whatsapp" id="whatsapp" />
+                          <MessageCircle className="h-5 w-5 text-success" />
+                          <div className="flex-1">
+                            <span className="font-medium">WhatsApp</span>
+                            <p className="text-xs text-muted-foreground">Combine o pagamento com nossa equipe</p>
+                          </div>
+                        </label>
+                      )}
                     </RadioGroup>
+                    {aboveWhatsAppLimit && (
+                      <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning-foreground">
+                        <MessageCircle className="h-4 w-4 inline mr-1" />
+                        Pedido acima de {formatCurrency(whatsappLimit)} — ao clicar em "Pagar", você será direcionado ao WhatsApp para finalizar.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -578,25 +572,14 @@ export default function CheckoutPage() {
                       <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Check className="h-10 w-10 text-success" />
                       </div>
-                      <h2 className="text-2xl font-bold text-success mb-2">
-                        {paymentMethod === 'whatsapp' || forceWhatsApp ? 'Pedido Enviado!' : 'Pedido Registrado!'}
-                      </h2>
-                      <p className="text-muted-foreground mb-4">
-                        {paymentMethod === 'whatsapp' || forceWhatsApp
-                          ? 'Seu pedido foi enviado para o WhatsApp. Nossa equipe entrará em contato.'
-                          : 'Aguarde a confirmação do pagamento'}
-                      </p>
+                      <h2 className="text-2xl font-bold text-success mb-2">Pedido Registrado!</h2>
+                      <p className="text-muted-foreground mb-4">Aguarde a confirmação do pagamento</p>
                       {orderId && <p className="text-xs text-muted-foreground mb-6">Pedido #{orderId.slice(0, 8)}</p>}
-                      {(paymentMethod === 'whatsapp' || forceWhatsApp) && (
-                        <Button variant="outline" className="mb-4 gap-2 border-success text-success hover:bg-success/10" onClick={() => handleWhatsAppRedirect()}>
-                          <MessageCircle className="h-4 w-4" /> Abrir WhatsApp novamente
-                        </Button>
-                      )}
                       <div>
                         <Button size="lg" onClick={handleFinish}>Voltar para a Loja</Button>
                       </div>
                     </div>
-                    ) : paymentMethod === 'pix' ? (
+                  ) : paymentMethod === 'pix' ? (
                     <>
                       <div className="text-center">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -610,12 +593,27 @@ export default function CheckoutPage() {
                         </div>
                       </div>
 
-                      {/* PodPay: show generate button if not yet generated */}
-                      {paymentGateway === 'podpay' && !pixCode && !isCreatingPix && (
-                        <Button className="w-full" size="lg" onClick={() => {
-                          if (orderId) createPodPayPix(orderId, pixTotal);
-                        }}>
-                          <Banknote className="h-4 w-4 mr-2" /> Gerar PIX para Pagamento
+                      {/* Show "Pagar" button before PIX is generated */}
+                      {!pixGenerated && !isCreatingPix && (
+                        <Button className="w-full" size="lg" onClick={async () => {
+                          if (!orderId) return;
+                          if (aboveWhatsAppLimit) {
+                            handleWhatsAppRedirect(orderId);
+                            setPaymentStatus('paid');
+                            clearCart();
+                            toast.success('Pedido enviado para o WhatsApp!');
+                            return;
+                          }
+                          if (paymentGateway === 'podpay') {
+                            await createPodPayPix(orderId, pixTotal);
+                          } else {
+                            const pixKey = settings?.pix_key || storePhone;
+                            setPixCode(pixKey);
+                            await updateOrder.mutateAsync({ id: orderId, pix_code: pixKey });
+                          }
+                          setPixGenerated(true);
+                        }} disabled={!orderId}>
+                          <Banknote className="h-4 w-4 mr-2" /> Pagar {formatCurrency(pixTotal)}
                         </Button>
                       )}
 
@@ -626,8 +624,8 @@ export default function CheckoutPage() {
                         </div>
                       )}
 
-                      {/* Show PIX code (manual = immediate, podpay = after generation) */}
-                      {pixCode && !isCreatingPix && (
+                      {/* Show PIX code after generation */}
+                      {pixGenerated && pixCode && !isCreatingPix && (
                         <>
                           {pixQrImage && (
                             <div className="flex justify-center">
@@ -635,7 +633,7 @@ export default function CheckoutPage() {
                             </div>
                           )}
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">{paymentGateway === 'podpay' ? 'Código PIX Copia e Cola' : 'Chave PIX'}</Label>
+                            <Label className="text-sm font-medium">{paymentGateway === 'podpay' ? 'Código PIX Copia e Cola' : 'Chave PIX — Copia e Cola'}</Label>
                             <div className="flex gap-2">
                               <Input value={pixCode} readOnly className="font-mono text-xs" />
                               <Button variant="outline" onClick={handleCopyPix} className="gap-2 shrink-0">
@@ -658,17 +656,15 @@ export default function CheckoutPage() {
                             <MessageCircle className="h-4 w-4" /> Enviar Comprovante via WhatsApp
                           </Button>
 
-                          {/* Manual PIX: "Já fiz o pagamento" → WhatsApp */}
-                          {paymentGateway === 'manual' && (
-                            <Button className="w-full" size="lg" onClick={() => {
-                              handleSendReceiptWhatsApp();
-                              setPaymentStatus('paid');
-                              clearCart();
-                              toast.success('Pedido registrado! Envie o comprovante pelo WhatsApp.');
-                            }}>
-                              <Check className="h-4 w-4 mr-2" /> Já fiz o pagamento
-                            </Button>
-                          )}
+                          {/* "Já fiz o pagamento" button */}
+                          <Button className="w-full" size="lg" onClick={() => {
+                            handleSendReceiptWhatsApp();
+                            setPaymentStatus('paid');
+                            clearCart();
+                            toast.success('Pedido registrado! Envie o comprovante pelo WhatsApp.');
+                          }}>
+                            <Check className="h-4 w-4 mr-2" /> Já fiz o pagamento
+                          </Button>
                         </>
                       )}
                     </>
@@ -721,7 +717,17 @@ export default function CheckoutPage() {
                           </div>
                         </div>
 
-                        <Button className="w-full" size="lg" onClick={handleCardSubmit} disabled={updateOrder.isPending}>
+                        <Button className="w-full" size="lg" onClick={() => {
+                          if (aboveWhatsAppLimit) {
+                            if (!orderId) return;
+                            handleWhatsAppRedirect(orderId);
+                            setPaymentStatus('paid');
+                            clearCart();
+                            toast.success('Pedido enviado para o WhatsApp!');
+                          } else {
+                            handleCardSubmit();
+                          }
+                        }} disabled={updateOrder.isPending}>
                           {updateOrder.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando...</> : <><Lock className="h-4 w-4 mr-2" />Pagar {formatCurrency(installments[selectedInstallment - 1].total)}</>}
                         </Button>
                       </div>

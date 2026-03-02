@@ -69,6 +69,70 @@ const formatPhone = (value: string): string => {
   return n.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
 };
 
+const buildEmvField = (id: string, value: string): string => `${id}${String(value.length).padStart(2, '0')}${value}`;
+
+const normalizePixText = (value: string, maxLength: number): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .toUpperCase()
+    .trim()
+    .slice(0, maxLength);
+
+const crc16 = (payload: string): string => {
+  let crc = 0xffff;
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) !== 0 ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xffff;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+};
+
+const generatePixCopyPaste = ({
+  pixKey,
+  amount,
+  customerName,
+  city,
+  txid,
+}: {
+  pixKey: string;
+  amount: number;
+  customerName: string;
+  city: string;
+  txid: string;
+}): string => {
+  const key = pixKey.trim();
+  if (!key) return '';
+
+  const merchantName = normalizePixText(customerName || 'AGRO BRASIL', 25) || 'AGRO BRASIL';
+  const merchantCity = normalizePixText(city || 'SAO PAULO', 15) || 'SAO PAULO';
+  const normalizedTxid = normalizePixText((txid || 'PEDIDO').replace(/\s+/g, ''), 25) || 'PEDIDO';
+
+  const merchantAccountInfo = buildEmvField(
+    '26',
+    buildEmvField('00', 'br.gov.bcb.pix') + buildEmvField('01', key)
+  );
+
+  const payloadWithoutCRC = [
+    buildEmvField('00', '01'),
+    merchantAccountInfo,
+    buildEmvField('52', '0000'),
+    buildEmvField('53', '986'),
+    buildEmvField('54', Number(amount || 0).toFixed(2)),
+    buildEmvField('58', 'BR'),
+    buildEmvField('59', merchantName),
+    buildEmvField('60', merchantCity),
+    buildEmvField('62', buildEmvField('05', normalizedTxid)),
+    '6304',
+  ].join('');
+
+  return `${payloadWithoutCRC}${crc16(payloadWithoutCRC)}`;
+};
+
 // Installment calculation
 const PIX_DISCOUNT = 0.15;
 const INTEREST_RATE = 0.0299; // 2.99% per month for installments > 5
@@ -276,6 +340,22 @@ export default function CheckoutPage() {
       : '';
   };
 
+  const buildManualPixCode = (currentOrderId: string, amount: number) => {
+    const configuredPixKey = String(settings?.pix_key || '').trim();
+    const fallbackPhone = String(storePhone || '').replace(/\D/g, '');
+    const pixKey = configuredPixKey || fallbackPhone;
+
+    if (!pixKey) return '';
+
+    return generatePixCopyPaste({
+      pixKey,
+      amount,
+      customerName: formData.name,
+      city: formData.city,
+      txid: (currentOrderId || 'pedido').slice(0, 25),
+    });
+  };
+
   const handleCreateOrder = async () => {
     try {
       const orderTotal = paymentMethod === 'pix' ? pixTotal : (selectedInstallment > 5 ? installments[selectedInstallment - 1].total : totalBeforeDiscount);
@@ -325,28 +405,43 @@ export default function CheckoutPage() {
         body: { amount, orderId: oId },
       });
       if (error) throw error;
-      if (!data.success) throw new Error(data.error || 'Erro ao gerar PIX');
+      if (!data?.success) throw new Error(data?.error || 'Erro ao gerar PIX');
 
-      setPixCode(data.pix_code || '');
-      setPixQrImage(data.pix_qr_code_image || '');
-      setTransactionId(data.transaction_id);
+      const generatedPixCode = String(data.pix_code || '').trim();
+      const generatedPixQrImage = String(data.pix_qr_code_image || '').trim();
+      const generatedTransactionId = data.transaction_id ? String(data.transaction_id) : null;
 
-      // Start polling for payment confirmation
-      if (data.transaction_id) {
-        startPolling(data.transaction_id);
+      if (!generatedPixCode) {
+        throw new Error('PodPay não retornou o PIX copia e cola');
       }
 
-      // Save transaction ID to order
+      setPixCode(generatedPixCode);
+      setPixQrImage(generatedPixQrImage);
+      setTransactionId(generatedTransactionId);
+
+      if (generatedTransactionId) {
+        startPolling(generatedTransactionId);
+      }
+
       await updateOrder.mutateAsync({
         id: oId,
-        pix_code: data.pix_code || '',
-        notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}PodPay TX: ${data.transaction_id}`,
+        pix_code: generatedPixCode,
+        notes: `${formData.cpf ? `CPF: ${formData.cpf}\n` : ''}PodPay TX: ${generatedTransactionId || 'N/A'}`,
       });
     } catch (err: any) {
       console.error('PodPay error:', err);
-      toast.error('Erro ao gerar PIX. Usando chave manual.');
-      const pixKey = settings?.pix_key || storePhone;
-      setPixCode(pixKey);
+
+      const fallbackManualCode = buildManualPixCode(oId, amount);
+      if (fallbackManualCode) {
+        setPixQrImage('');
+        setPixCode(fallbackManualCode);
+        await updateOrder.mutateAsync({ id: oId, pix_code: fallbackManualCode });
+        toast.error('PodPay indisponível. PIX manual gerado.');
+        return;
+      }
+
+      toast.error('Erro ao gerar PIX. Configure a chave PIX no painel.');
+      throw err;
     } finally {
       setIsCreatingPix(false);
     }
@@ -399,6 +494,36 @@ export default function CheckoutPage() {
       toast.success('Pagamento registrado! Aguarde confirmação.');
     } catch (error) {
       toast.error('Erro ao processar. Tente novamente.');
+    }
+  };
+
+  const handlePixSubmit = async () => {
+    if (!orderId) return;
+
+    if (aboveWhatsAppLimit) {
+      handleWhatsAppRedirect(orderId);
+      setPaymentStatus('paid');
+      clearCart();
+      toast.success('Pedido enviado para o WhatsApp!');
+      return;
+    }
+
+    try {
+      if (paymentGateway === 'podpay') {
+        await createPodPayPix(orderId, pixTotal);
+      } else {
+        const manualPixCode = buildManualPixCode(orderId, pixTotal);
+        if (!manualPixCode) throw new Error('Chave PIX não configurada');
+
+        setPixQrImage('');
+        setPixCode(manualPixCode);
+        await updateOrder.mutateAsync({ id: orderId, pix_code: manualPixCode });
+      }
+
+      setPixGenerated(true);
+    } catch (error) {
+      console.error('Error generating PIX:', error);
+      toast.error('Não foi possível gerar o PIX agora. Tente novamente.');
     }
   };
 
@@ -595,24 +720,12 @@ export default function CheckoutPage() {
 
                       {/* Show "Pagar" button before PIX is generated */}
                       {!pixGenerated && !isCreatingPix && (
-                        <Button className="w-full" size="lg" onClick={async () => {
-                          if (!orderId) return;
-                          if (aboveWhatsAppLimit) {
-                            handleWhatsAppRedirect(orderId);
-                            setPaymentStatus('paid');
-                            clearCart();
-                            toast.success('Pedido enviado para o WhatsApp!');
-                            return;
-                          }
-                          if (paymentGateway === 'podpay') {
-                            await createPodPayPix(orderId, pixTotal);
-                          } else {
-                            const pixKey = settings?.pix_key || storePhone;
-                            setPixCode(pixKey);
-                            await updateOrder.mutateAsync({ id: orderId, pix_code: pixKey });
-                          }
-                          setPixGenerated(true);
-                        }} disabled={!orderId}>
+                        <Button
+                          className="w-full"
+                          size="lg"
+                          onClick={handlePixSubmit}
+                          disabled={!orderId || updateOrder.isPending || isCreatingPix}
+                        >
                           <Banknote className="h-4 w-4 mr-2" /> Pagar {formatCurrency(pixTotal)}
                         </Button>
                       )}
@@ -633,7 +746,7 @@ export default function CheckoutPage() {
                             </div>
                           )}
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">{paymentGateway === 'podpay' ? 'Código PIX Copia e Cola' : 'Chave PIX — Copia e Cola'}</Label>
+                            <Label className="text-sm font-medium">Código PIX Copia e Cola</Label>
                             <div className="flex gap-2">
                               <Input value={pixCode} readOnly className="font-mono text-xs" />
                               <Button variant="outline" onClick={handleCopyPix} className="gap-2 shrink-0">

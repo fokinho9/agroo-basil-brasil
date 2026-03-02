@@ -54,9 +54,8 @@ function randomCPF(): string {
   if (r >= 10) r = 0;
   digits.push(r);
 
-  // Format as XXX.XXX.XXX-XX
-  const s = digits.join('');
-  return `${s.slice(0,3)}.${s.slice(3,6)}.${s.slice(6,9)}-${s.slice(9)}`;
+  // PodPay espera documento apenas com números
+  return digits.join('');
 }
 
 function randomPhone(): string {
@@ -65,7 +64,8 @@ function randomPhone(): string {
   const ddd = randomItem(ddds);
   // Mobile numbers start with 9
   const num = '9' + String(Math.floor(Math.random() * 90000000) + 10000000);
-  return `+55${ddd}${num}`;
+  // PodPay espera telefone apenas com números
+  return `${ddd}${num}`;
 }
 
 function randomEmail(name: string): string {
@@ -79,8 +79,10 @@ function randomEmail(name: string): string {
 }
 
 // ✅ Pega o "copia e cola" (BR Code / EMV) mesmo se a API mudar o nome do campo
-function pickPixCode(pix: any): string {
-  if (!pix) return '';
+function pickPixCode(payload: any): string {
+  if (!payload) return '';
+
+  const pix = payload.pix ?? payload;
 
   return (
     pix.copy_paste ||
@@ -89,15 +91,20 @@ function pickPixCode(pix: any): string {
     pix.payload ||
     pix.brcode ||
     pix.code ||
-    pix.qr_code || // deixa por último; às vezes não é o copia e cola
+    pix.qr_code ||
     pix.qrCode ||
+    payload.pixQrCode ||
+    payload.pix_qr_code ||
+    payload.copyAndPaste ||
     ''
   );
 }
 
 // ✅ Pega imagem/URL do QR Code com fallback
-function pickPixQrImage(pix: any): string {
-  if (!pix) return '';
+function pickPixQrImage(payload: any): string {
+  if (!payload) return '';
+
+  const pix = payload.pix ?? payload;
 
   return (
     pix.qr_code_image ||
@@ -106,6 +113,8 @@ function pickPixQrImage(pix: any): string {
     pix.qrCodeUrl ||
     pix.qr_image_url ||
     pix.qrImageUrl ||
+    payload.pixQrCodeImage ||
+    payload.pix_qr_code_image ||
     ''
   );
 }
@@ -140,23 +149,34 @@ Deno.serve(async (req) => {
 
     // Amount is already in BRL, convert to centavos
     const amountCentavos = Math.round(Number(amount) * 100);
+    const cpfDigits = cpf.replace(/\D/g, '');
+    const phoneDigits = phone.replace(/\D/g, '');
 
     const body = {
       amount: amountCentavos,
       paymentMethod: 'pix',
+      pix: {
+        expiresInSeconds: 3600,
+      },
       customer: {
         name: fullName,
         email: email,
-        document: cpf,
-        phone: phone,
+        document: {
+          type: 'cpf',
+          number: cpfDigits,
+        },
+        phone: phoneDigits,
+        type: 'individual',
       },
       items: [
         {
           title: courseName,
           quantity: 1,
           unitPrice: amountCentavos,
+          tangible: false,
         },
       ],
+      externalRef: orderId || `order_${Date.now()}`,
     };
 
     console.log('Creating PodPay PIX transaction, full body:', JSON.stringify(body));
@@ -181,11 +201,11 @@ Deno.serve(async (req) => {
     // ⚠️ txData mutável porque vamos tentar buscar depois se vier pix vazio
     let txData = createJson.data;
 
-    let pixCode = pickPixCode(txData.pix);
-    let pixQr = pickPixQrImage(txData.pix);
+    let pixCode = pickPixCode(txData);
+    let pixQr = pickPixQrImage(txData);
 
-    // 🔥 PodPay pode demorar para anexar o pix no retorno do POST
-    if (!pixCode || !pixQr) {
+    // 🔥 PodPay pode demorar para anexar o código PIX no retorno do POST
+    if (!pixCode) {
       for (let i = 0; i < 4; i++) {
         await sleep(900);
 
@@ -200,11 +220,11 @@ Deno.serve(async (req) => {
 
         if (getRes.ok && getJson?.success && getJson?.data) {
           txData = getJson.data;
-          pixCode = pixCode || pickPixCode(txData.pix);
-          pixQr = pixQr || pickPixQrImage(txData.pix);
+          pixCode = pixCode || pickPixCode(txData);
+          pixQr = pixQr || pickPixQrImage(txData);
         }
 
-        if (pixCode && pixQr) break;
+        if (pixCode) break;
       }
     }
 

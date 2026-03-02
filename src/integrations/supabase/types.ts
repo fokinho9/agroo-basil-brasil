@@ -941,6 +941,56 @@ export type Database = {
         }
         Relationships: []
       }
+      tracking_events: {
+        Row: {
+          created_at: string
+          id: string
+          location_city: string | null
+          location_postcode: string | null
+          location_state: string | null
+          occurred_at: string
+          order_id: string
+          simulated: boolean
+          status_code: string
+          status_label: string
+          tracking_code: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_city?: string | null
+          location_postcode?: string | null
+          location_state?: string | null
+          occurred_at?: string
+          order_id: string
+          simulated?: boolean
+          status_code: string
+          status_label: string
+          tracking_code: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_city?: string | null
+          location_postcode?: string | null
+          location_state?: string | null
+          occurred_at?: string
+          order_id?: string
+          simulated?: boolean
+          status_code?: string
+          status_label?: string
+          tracking_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

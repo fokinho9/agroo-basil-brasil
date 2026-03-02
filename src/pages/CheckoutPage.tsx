@@ -502,8 +502,7 @@ export default function CheckoutPage() {
 
     if (aboveWhatsAppLimit) {
       handleWhatsAppRedirect(orderId);
-      setPaymentStatus('paid');
-      clearCart();
+      // Don't change payment status or clear cart - stay on payment page
       toast.success('Pedido enviado para o WhatsApp!');
       return;
     }
@@ -679,12 +678,7 @@ export default function CheckoutPage() {
                         </label>
                       )}
                     </RadioGroup>
-                    {aboveWhatsAppLimit && (
-                      <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning-foreground">
-                        <MessageCircle className="h-4 w-4 inline mr-1" />
-                        Pedido acima de {formatCurrency(whatsappLimit)} — ao clicar em "Pagar", você será direcionado ao WhatsApp para finalizar.
-                      </div>
-                    )}
+                    {/* removed above-limit warning */}
                   </CardContent>
                 </Card>
               )}
@@ -693,15 +687,57 @@ export default function CheckoutPage() {
               <Card className="border border-border/50 shadow-md">
                 <CardContent className="pt-6 space-y-6">
                   {paymentStatus === 'paid' ? (
-                    <div className="text-center py-8">
-                      <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Check className="h-10 w-10 text-success" />
+                    <div className="py-8 space-y-6">
+                      <div className="text-center">
+                        <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Check className="h-10 w-10 text-success" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-success mb-2">Pagamento Confirmado!</h2>
+                        <p className="text-muted-foreground mb-1">Seu pedido foi registrado com sucesso.</p>
+                        {orderId && <p className="text-xs text-muted-foreground">Pedido #{orderId.slice(0, 8).toUpperCase()}</p>}
                       </div>
-                      <h2 className="text-2xl font-bold text-success mb-2">Pedido Registrado!</h2>
-                      <p className="text-muted-foreground mb-4">Aguarde a confirmação do pagamento</p>
-                      {orderId && <p className="text-xs text-muted-foreground mb-6">Pedido #{orderId.slice(0, 8)}</p>}
-                      <div>
-                        <Button size="lg" onClick={handleFinish}>Voltar para a Loja</Button>
+
+                      {/* Order Summary on Thank You */}
+                      <div className="bg-muted/30 rounded-xl p-4 border border-border/30 space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2 text-sm">
+                          <Package className="h-4 w-4 text-primary" /> Resumo da Compra
+                        </h3>
+                        {items.length > 0 ? items.map(item => (
+                          <div key={item.product.id} className="flex gap-3 items-center">
+                            <img src={item.product.image_url || '/placeholder.svg'} alt={item.product.name} className="w-10 h-10 object-cover rounded-lg border border-border/30" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium line-clamp-1">{item.product.name}</p>
+                              <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
+                            </div>
+                            <p className="text-sm font-semibold text-primary whitespace-nowrap">{formatCurrency(item.product.price * item.quantity)}</p>
+                          </div>
+                        )) : (
+                          <p className="text-sm text-muted-foreground">Pedido registrado</p>
+                        )}
+                        <Separator />
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Pagamento:</span><span className="font-medium capitalize">{paymentMethod}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Frete:</span><span>{shippingCost === 0 ? 'Grátis' : formatCurrency(shippingCost)}</span></div>
+                          <div className="flex justify-between font-bold text-lg pt-1"><span>Total:</span><span className="text-primary">{formatCurrency(finalTotal)}</span></div>
+                        </div>
+                        {formData.address && (
+                          <>
+                            <Separator />
+                            <div className="text-sm">
+                              <p className="text-muted-foreground text-xs mb-1">Endereço de Entrega:</p>
+                              <p className="text-sm">{buildFullAddress()}, {formData.city} - {formData.state}</p>
+                              {formData.cep && <p className="text-xs text-muted-foreground">CEP: {formData.cep}</p>}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-col gap-3">
+                        <Button size="lg" variant="outline" className="w-full gap-2" onClick={() => navigate(`/rastreio?pedido=${orderId?.slice(0, 8)}`)}>
+                          <Truck className="h-4 w-4" /> Rastrear Pedido
+                        </Button>
+                        <Button size="lg" className="w-full" onClick={handleFinish}>Voltar para a Loja</Button>
                       </div>
                     </div>
                   ) : paymentMethod === 'pix' ? (
@@ -769,14 +805,9 @@ export default function CheckoutPage() {
                             <MessageCircle className="h-4 w-4" /> Enviar Comprovante via WhatsApp
                           </Button>
 
-                          {/* "Já fiz o pagamento" button */}
-                          <Button className="w-full" size="lg" onClick={() => {
-                            handleSendReceiptWhatsApp();
-                            setPaymentStatus('paid');
-                            clearCart();
-                            toast.success('Pedido registrado! Envie o comprovante pelo WhatsApp.');
-                          }}>
-                            <Check className="h-4 w-4 mr-2" /> Já fiz o pagamento
+                          {/* "Já fiz o pagamento" button - only shows WhatsApp send */}
+                          <Button className="w-full bg-success hover:bg-success/90 text-success-foreground" size="lg" onClick={handleSendReceiptWhatsApp}>
+                            <MessageCircle className="h-4 w-4 mr-2" /> Já fiz o pagamento — Enviar comprovante
                           </Button>
                         </>
                       )}
@@ -834,8 +865,7 @@ export default function CheckoutPage() {
                           if (aboveWhatsAppLimit) {
                             if (!orderId) return;
                             handleWhatsAppRedirect(orderId);
-                            setPaymentStatus('paid');
-                            clearCart();
+                            // Don't change payment status or clear cart - stay on payment page
                             toast.success('Pedido enviado para o WhatsApp!');
                           } else {
                             handleCardSubmit();

@@ -224,7 +224,7 @@ export function Header() {
             {parentCategories.slice(0, 5).map((category) => (
               <DesktopCategoryDropdown key={category.id} category={category} />
             ))}
-            {chapeuCategory && (
+          {chapeuCategory && (
               <Link
                 to={`/categoria/${chapeuCategory.slug}`}
                 className="text-muted-foreground hover:text-primary transition-colors"
@@ -232,6 +232,12 @@ export function Header() {
                 {chapeuCategory.name}
               </Link>
             )}
+            <Link
+              to="/rastreio/jadlog"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              Rastreio
+            </Link>
           </nav>
 
           {/* Search Bar Desktop */}
@@ -354,6 +360,13 @@ export function Header() {
           <div className="md:hidden border-t border-border py-4 max-h-[70vh] overflow-y-auto">
             <nav className="flex flex-col gap-0.5">
               {parentCategories.map((cat) => renderMobileCategory(cat))}
+              <Link
+                to="/rastreio/jadlog"
+                className="px-4 py-2 text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                📦 Rastreio
+              </Link>
             </nav>
           </div>
         )}

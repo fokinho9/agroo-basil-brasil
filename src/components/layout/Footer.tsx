@@ -8,6 +8,7 @@ const quickLinks = [
   { to: '/sobre', label: 'Sobre Nós' },
   { to: '/contato', label: 'Contato' },
   { to: '/rastreio', label: 'Rastrear Pedido' },
+  { to: '/rastreio/jadlog', label: 'Rastreio Jadlog' },
 ];
 
 const policyLinks = [
